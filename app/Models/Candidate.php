@@ -18,6 +18,8 @@ class Candidate extends Model
         'birthplace',
         'birthdate',
         'first_working_day',
+        'nik',
+        'image_path',
     ];
 
     protected function casts(): array
