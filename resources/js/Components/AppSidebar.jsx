@@ -26,7 +26,7 @@ const menuItems = [
         icon: LucideFilePlus,
         subItems: [
             { title: "Tambah Kandidat", url: "/candidates", icon: UserPlus2 },
-            { title: "Upload Gambar", url: "/candidates/image-upload", icon: ImagePlus },
+            { title: "Upload Gambar", url: "/candidates/upload-image", icon: ImagePlus },
         ],
     },
     {

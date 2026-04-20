@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\CandidateController;
+use App\Http\Controllers\UploadImageController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -20,12 +21,17 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth', 'verified')->group(function () {
+
+    // Candidate Routes
     Route::get('/candidates', [CandidateController::class, 'index'])->name('candidates.index');
     Route::post('/candidates', [CandidateController::class, 'store'])->name('candidates.store');
     Route::put('/candidates/{candidate}', [CandidateController::class, 'update'])->name('candidates.update');
     Route::delete('/candidates/{candidate}', [CandidateController::class, 'destroy'])->name('candidates.destroy');
     Route::post('/candidates/import', [CandidateController::class, 'import'])->name('candidates.import');
     Route::get('/candidates/template', [CandidateController::class, 'downloadTemplate'])->name('candidates.template');
+
+    // Upload Image Route
+    Route::get('/candidates/upload-image', [UploadImageController::class, 'view'])->name('candidates.uploadImage.view');
 });
 
 Route::middleware('auth')->group(function () {
