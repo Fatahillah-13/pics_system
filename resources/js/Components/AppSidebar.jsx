@@ -77,7 +77,7 @@ export function AppSidebar() {
                                                 <SidebarMenuSub>
                                                     {item.subItems.map((subItem) => (
                                                         <SidebarMenuSubItem key={subItem.title}>
-                                                            <SidebarMenuSubButton asChild isActive={url.startsWith(subItem.url)}>
+                                                            <SidebarMenuSubButton asChild isActive={url.startsWith(subItem.url) && !item.subItems.some(si => si !== subItem && url.startsWith(si.url) && si.url.length > subItem.url.length)}>
                                                                 <Link href={subItem.url}>
                                                                     <subItem.icon />
                                                                     <span>{subItem.title}</span>
