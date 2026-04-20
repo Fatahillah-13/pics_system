@@ -32,6 +32,7 @@ Route::middleware('auth', 'verified')->group(function () {
 
     // Upload Image Route
     Route::get('/candidates/upload-image', [UploadImageController::class, 'view'])->name('candidates.uploadImage.view');
+    Route::post('/candidates/upload-image', [UploadImageController::class, 'store'])->name('candidates.uploadImage.store');
 });
 
 Route::middleware('auth')->group(function () {
