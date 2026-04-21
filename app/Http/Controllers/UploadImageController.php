@@ -50,4 +50,15 @@ class UploadImageController extends Controller
 
         return back()->with('success', 'Photo uploaded successfully.');
     }
+
+    public function updatePhotoNumber(Request $request, Candidate $candidate)
+    {
+        $request->validate([
+            'photo_number' => 'nullable|integer|min:1',
+        ]);
+
+        $candidate->update(['photo_number' => $request->photo_number]);
+
+        return back();
+    }
 }

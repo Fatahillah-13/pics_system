@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Plus, Trash2, Check, X, Pencil, Upload, FileSpreadsheet, Download } from 'lucide-react';
 
 function InlineSelect({ value, onChange, options, placeholder }) {
@@ -35,7 +35,7 @@ function InlineInput({ value, onChange, type = 'text', placeholder = '' }) {
 function EditableRow({ candidate, departments, joblevels, onCancel, onSave, errors }) {
     const [form, setForm] = useState({
         name: candidate.name || '',
-        nik: candidate.nik || '',
+        photo_number: candidate.photo_number || '',
         joblevel_id: candidate.joblevel_id || '',
         department_id: candidate.department_id || '',
         birthplace: candidate.birthplace || '',
@@ -53,8 +53,8 @@ function EditableRow({ candidate, departments, joblevels, onCancel, onSave, erro
                 {errors?.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
             </td>
             <td className="px-3 py-2">
-                <InlineInput value={form.nik} onChange={set('nik')} placeholder="NIK" />
-                {errors?.nik && <p className="text-xs text-red-500 mt-1">{errors.nik}</p>}
+                <InlineInput value={form.photo_number} onChange={set('photo_number')} placeholder="Nomor Foto" />
+                {errors?.photo_number && <p className="text-xs text-red-500 mt-1">{errors.photo_number}</p>}
             </td>
             <td className="px-3 py-2">
                 <InlineSelect value={form.joblevel_id} onChange={set('joblevel_id')} options={joblevels} placeholder="Pilih Job Level" />
@@ -100,7 +100,7 @@ function ReadOnlyRow({ candidate, index, onEdit, onDelete }) {
         <tr className="hover:bg-gray-50">
             <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{index + 1}</td>
             <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-900">{candidate.name}</td>
-            <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{candidate.nik || '-'}</td>
+            <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{candidate.photo_number || '-'}</td>
             <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{candidate.joblevel?.name || '-'}</td>
             <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{candidate.department?.name || '-'}</td>
             <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{candidate.birthplace || '-'}</td>
@@ -140,8 +140,21 @@ export default function AddCandidate({ candidates, departments, joblevels }) {
     const [showImportModal, setShowImportModal] = useState(false);
     const [dragOver, setDragOver] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
     const fileInputRef = useRef(null);
     const { errors: pageErrors } = usePage().props;
+
+    const totalPages = Math.max(1, Math.ceil(candidates.length / perPage));
+    const safePage = Math.min(currentPage, totalPages);
+    const paginatedCandidates = candidates.slice(
+        (safePage - 1) * perPage,
+        safePage * perPage
+    );
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [perPage]);
 
     const handleFileSelect = (file) => {
         const validTypes = [
@@ -226,7 +239,7 @@ export default function AddCandidate({ candidates, departments, joblevels }) {
     const columns = [
         'No',
         'Nama',
-        'NIK',
+        'Nomor Foto',
         'Job Level',
         'Department',
         'Tempat Lahir',
@@ -406,8 +419,9 @@ export default function AddCandidate({ candidates, departments, joblevels }) {
                                                 errors={errors}
                                             />
                                         )}
-                                        {candidates.map((candidate, index) =>
-                                            editingId === candidate.id ? (
+                                        {paginatedCandidates.map((candidate, index) => {
+                                            const globalIndex = (safePage - 1) * perPage + index;
+                                            return editingId === candidate.id ? (
                                                 <EditableRow
                                                     key={candidate.id}
                                                     candidate={candidate}
@@ -424,7 +438,7 @@ export default function AddCandidate({ candidates, departments, joblevels }) {
                                                 <ReadOnlyRow
                                                     key={candidate.id}
                                                     candidate={candidate}
-                                                    index={index}
+                                                    index={globalIndex}
                                                     onEdit={(c) => {
                                                         setEditingId(c.id);
                                                         setIsAdding(false);
@@ -432,8 +446,8 @@ export default function AddCandidate({ candidates, departments, joblevels }) {
                                                     }}
                                                     onDelete={handleDelete}
                                                 />
-                                            )
-                                        )}
+                                            );
+                                        })}
                                         {candidates.length === 0 && !isAdding && (
                                             <tr>
                                                 <td colSpan={columns.length} className="px-3 py-6 text-center text-sm text-gray-500">
@@ -443,6 +457,48 @@ export default function AddCandidate({ candidates, departments, joblevels }) {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+
+                            {/* Pagination Footer */}
+                            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <span>Tampilkan</span>
+                                    <select
+                                        value={perPage}
+                                        onChange={(e) => setPerPage(Number(e.target.value))}
+                                        className="w-20 rounded border border-gray-300 pl-2 pr-7 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                        {[10, 20, 30, 50].map((n) => (
+                                            <option key={n} value={n}>{n}</option>
+                                        ))}
+                                    </select>
+                                    <span>per halaman &mdash; Total {candidates.length} kandidat</span>
+                                </div>
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setCurrentPage(1)}
+                                            disabled={safePage === 1}
+                                            className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                        >«</button>
+                                        <button
+                                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                            disabled={safePage === 1}
+                                            className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                        >‹</button>
+                                        <span className="px-3 text-sm text-gray-600">{safePage} / {totalPages}</span>
+                                        <button
+                                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                            disabled={safePage === totalPages}
+                                            className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                        >›</button>
+                                        <button
+                                            onClick={() => setCurrentPage(totalPages)}
+                                            disabled={safePage === totalPages}
+                                            className="rounded border border-gray-300 px-2 py-1 text-xs disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                        >»</button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

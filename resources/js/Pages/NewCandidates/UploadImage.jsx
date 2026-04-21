@@ -11,15 +11,39 @@ export default function UploadImage({ candidates }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [saving, setSaving] = useState(false);
     const [facingMode, setFacingMode] = useState('user');
+    const [sortBy, setSortBy] = useState('index');
+    const [editingPhotoNumber, setEditingPhotoNumber] = useState(null);
+    const [editingValue, setEditingValue] = useState('');
+    const [savingPhotoNumber, setSavingPhotoNumber] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 5;
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
+    const editInputRef = useRef(null);
 
-    const filteredCandidates = candidates.filter((c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.nik && c.nik.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (c.department?.name && c.department.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredCandidates = candidates
+        .filter((c) =>
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (c.nik && c.nik.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (c.department?.name && c.department.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        .slice()
+        .sort((a, b) => {
+            if (sortBy === 'photo_number') {
+                const aNum = a.photo_number ?? Infinity;
+                const bNum = b.photo_number ?? Infinity;
+                return aNum - bNum;
+            }
+            return 0; // preserve original order (already sorted by name from server)
+        });
+
+    const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const paginatedCandidates = filteredCandidates.slice(
+        (safePage - 1) * ITEMS_PER_PAGE,
+        safePage * ITEMS_PER_PAGE
     );
 
     const startCamera = useCallback(async (overrideFacingMode) => {
@@ -136,6 +160,38 @@ export default function UploadImage({ candidates }) {
         };
     }, []);
 
+    useEffect(() => {
+        if (editingPhotoNumber !== null && editInputRef.current) {
+            editInputRef.current.focus();
+            editInputRef.current.select();
+        }
+    }, [editingPhotoNumber]);
+
+    const savePhotoNumber = useCallback((candidateId) => {
+        const trimmed = String(editingValue).trim();
+        const value = trimmed === '' ? null : parseInt(trimmed, 10);
+        if (trimmed !== '' && isNaN(value)) {
+            setEditingPhotoNumber(null);
+            return;
+        }
+        setSavingPhotoNumber(candidateId);
+        router.patch(
+            route('candidates.updatePhotoNumber', candidateId),
+            { photo_number: value },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setSavingPhotoNumber(null);
+                    setEditingPhotoNumber(null);
+                },
+                onError: () => {
+                    setSavingPhotoNumber(null);
+                    setEditingPhotoNumber(null);
+                },
+            }
+        );
+    }, [editingValue]);
+
     return (
         <AuthenticatedLayout
             header={
@@ -165,7 +221,7 @@ export default function UploadImage({ candidates }) {
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <input
                                         type="text"
-                                        placeholder="Cari nama, NIK, atau departemen..."
+                                        placeholder="Cari nama atau departemen..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -177,13 +233,17 @@ export default function UploadImage({ candidates }) {
                                     <thead className="bg-gray-50 sticky top-0">
                                         <tr>
                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                No
+                                                <button
+                                                    onClick={() => setSortBy(s => s === 'index' ? 'photo_number' : 'index')}
+                                                    className="flex items-center gap-1 hover:text-indigo-600 transition-colors"
+                                                    title={sortBy === 'index' ? 'Klik untuk urut berdasarkan No. Foto' : 'Klik untuk urut biasa'}
+                                                >
+                                                    {sortBy === 'index' ? 'No' : 'No. Foto'}
+                                                    <span className="text-indigo-400">⇅</span>
+                                                </button>
                                             </th>
                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Nama
-                                            </th>
-                                            <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                NIK
                                             </th>
                                             <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Departemen
@@ -203,7 +263,9 @@ export default function UploadImage({ candidates }) {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            filteredCandidates.map((candidate, index) => (
+                                            paginatedCandidates.map((candidate, index) => {
+                                                const globalIndex = (safePage - 1) * ITEMS_PER_PAGE + index;
+                                                return (
                                                 <tr
                                                     key={candidate.id}
                                                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${
@@ -213,14 +275,43 @@ export default function UploadImage({ candidates }) {
                                                     }`}
                                                     onClick={() => setSelectedCandidate(candidate)}
                                                 >
-                                                    <td className="px-4 py-3 text-sm text-gray-500">
-                                                        {index + 1}
+                                                    <td
+                                                        className="px-4 py-3 text-sm text-gray-500"
+                                                        onDoubleClick={(e) => {
+                                                            if (sortBy !== 'photo_number') return;
+                                                            e.stopPropagation();
+                                                            setEditingPhotoNumber(candidate.id);
+                                                            setEditingValue(candidate.photo_number ?? '');
+                                                        }}
+                                                        title={sortBy === 'photo_number' ? 'Klik dua kali untuk edit no. foto' : ''}
+                                                    >
+                                                        {sortBy === 'photo_number' && editingPhotoNumber === candidate.id ? (
+                                                            <input
+                                                                ref={editInputRef}
+                                                                type="number"
+                                                                min="1"
+                                                                value={editingValue}
+                                                                onChange={(e) => setEditingValue(e.target.value)}
+                                                                onBlur={() => savePhotoNumber(candidate.id)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') savePhotoNumber(candidate.id);
+                                                                    if (e.key === 'Escape') setEditingPhotoNumber(null);
+                                                                    e.stopPropagation();
+                                                                }}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                disabled={savingPhotoNumber === candidate.id}
+                                                                className="w-16 px-1 py-0.5 border border-indigo-400 rounded text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                                                            />
+                                                        ) : (
+                                                            <span className={sortBy === 'photo_number' ? 'cursor-pointer hover:text-indigo-600' : ''}>
+                                                                {sortBy === 'photo_number'
+                                                                    ? (candidate.photo_number ?? '-')
+                                                                    : globalIndex + 1}
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
                                                         {candidate.name}
-                                                    </td>
-                                                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
-                                                        {candidate.nik || '-'}
                                                     </td>
                                                     <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
                                                         {candidate.department?.name || '-'}
@@ -241,13 +332,41 @@ export default function UploadImage({ candidates }) {
                                                         </button>
                                                     </td>
                                                 </tr>
-                                            ))
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="px-4 py-2 bg-gray-50 border-t text-xs text-gray-500">
-                                Total: {filteredCandidates.length} kandidat
+                            <div className="px-4 py-2 bg-gray-50 border-t text-xs text-gray-500 flex items-center justify-between gap-2">
+                                <span>Total: {filteredCandidates.length} kandidat</span>
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setCurrentPage(1)}
+                                            disabled={safePage === 1}
+                                            className="px-2 py-1 rounded border border-gray-300 text-xs disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                        >«</button>
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={safePage === 1}
+                                            className="px-2 py-1 rounded border border-gray-300 text-xs disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                        >‹</button>
+                                        <span className="px-2 text-xs text-gray-600">
+                                            {safePage} / {totalPages}
+                                        </span>
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                            disabled={safePage === totalPages}
+                                            className="px-2 py-1 rounded border border-gray-300 text-xs disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                        >›</button>
+                                        <button
+                                            onClick={() => setCurrentPage(totalPages)}
+                                            disabled={safePage === totalPages}
+                                            className="px-2 py-1 rounded border border-gray-300 text-xs disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                        >»</button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

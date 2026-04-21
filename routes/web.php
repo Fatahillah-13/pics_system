@@ -33,6 +33,7 @@ Route::middleware('auth', 'verified')->group(function () {
     // Upload Image Route
     Route::get('/candidates/upload-image', [UploadImageController::class, 'view'])->name('candidates.uploadImage.view');
     Route::post('/candidates/upload-image', [UploadImageController::class, 'store'])->name('candidates.uploadImage.store');
+    Route::patch('/candidates/{candidate}/photo-number', [UploadImageController::class, 'updatePhotoNumber'])->name('candidates.updatePhotoNumber');
 });
 
 Route::middleware('auth')->group(function () {

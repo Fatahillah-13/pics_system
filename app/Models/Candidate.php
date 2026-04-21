@@ -20,6 +20,7 @@ class Candidate extends Model
         'first_working_day',
         'nik',
         'image_path',
+        'photo_number',
     ];
 
     protected function casts(): array

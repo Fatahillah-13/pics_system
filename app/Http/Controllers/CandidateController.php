@@ -31,6 +31,7 @@ class CandidateController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'nik' => 'nullable|string|max:255',
+            'photo_number' => 'nullable|integer',
             'joblevel_id' => 'required|exists:joblevels,id',
             'department_id' => 'required|exists:departments,id',
             'birthplace' => 'nullable|string|max:255',
@@ -48,6 +49,7 @@ class CandidateController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'nik' => 'nullable|string|max:255',
+            'photo_number' => 'nullable|integer',
             'joblevel_id' => 'required|exists:joblevels,id',
             'department_id' => 'required|exists:departments,id',
             'birthplace' => 'nullable|string|max:255',
