@@ -15,7 +15,11 @@ class CandidateController extends Controller
 {
     public function index()
     {
-        $candidates = Candidate::with(['joblevel', 'department'])->latest()->get();
+        $candidates = Candidate::with(['joblevel', 'department'])
+            ->whereNull('image_path')
+            ->orWhere('image_path', '')
+            ->latest()
+            ->get();
         $departments = Department::all();
         $joblevels = Joblevel::all();
 

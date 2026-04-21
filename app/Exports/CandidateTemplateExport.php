@@ -13,7 +13,7 @@ class CandidateTemplateExport implements FromArray, WithHeadings, WithStyles
     {
         return [
             'name',
-            'nik',
+            'photo_number',
             'job_level',
             'department',
             'birthplace',
@@ -25,7 +25,7 @@ class CandidateTemplateExport implements FromArray, WithHeadings, WithStyles
     public function array(): array
     {
         return [
-            ['John Doe', '12345678', 'Staff', 'IT', 'Jakarta', '1995-01-15', '2026-04-20'],
+            ['John Doe', '1', 'Staff', 'IT', 'Jakarta', '1995-01-15', '2026-04-20'],
         ];
     }
 
