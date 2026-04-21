@@ -49,6 +49,7 @@ Route::middleware('auth', 'verified')->group(function () {
 
     // Bulk Add Candidate Route
     Route::get('/candidates/bulk-add', [BulkAddCandidateController::class, 'view'])->name('candidates.bulkAdd.view');
+    Route::post('/candidates/bulk-add/preview', [BulkAddCandidateController::class, 'preview'])->name('candidates.bulkAdd.preview');
     Route::post('/candidates/bulk-add', [BulkAddCandidateController::class, 'store'])->name('candidates.bulkAdd.store');
 
     // Reprint ID Card Route
