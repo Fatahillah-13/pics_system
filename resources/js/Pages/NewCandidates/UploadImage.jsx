@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, StopCircle, RotateCcw, Save, User, Search } from 'lucide-react';
+import { Camera, StopCircle, RotateCcw, Save, User, Search, RefreshCw } from 'lucide-react';
 
 export default function UploadImage({ candidates }) {
     const { flash } = usePage().props;
@@ -10,6 +10,7 @@ export default function UploadImage({ candidates }) {
     const [capturedImage, setCapturedImage] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [saving, setSaving] = useState(false);
+    const [facingMode, setFacingMode] = useState('user');
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -21,13 +22,13 @@ export default function UploadImage({ candidates }) {
         (c.department?.name && c.department.name.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-    const startCamera = useCallback(async () => {
+    const startCamera = useCallback(async (overrideFacingMode) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     width: { ideal: 480 },
                     height: { ideal: 640 },
-                    facingMode: 'user',
+                    facingMode: overrideFacingMode ?? facingMode,
                 },
             });
             streamRef.current = stream;
@@ -39,7 +40,7 @@ export default function UploadImage({ candidates }) {
         } catch (err) {
             alert('Tidak dapat mengakses kamera. Pastikan kamera terhubung dan izin diberikan.');
         }
-    }, []);
+    }, [facingMode]);
 
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
@@ -94,6 +95,15 @@ export default function UploadImage({ candidates }) {
         startCamera();
     }, [startCamera]);
 
+    const switchCamera = useCallback(() => {
+        const newMode = facingMode === 'user' ? 'environment' : 'user';
+        setFacingMode(newMode);
+        if (isCameraOn) {
+            stopCamera();
+            startCamera(newMode);
+        }
+    }, [facingMode, isCameraOn, stopCamera, startCamera]);
+
     const savePhoto = useCallback(() => {
         if (!selectedCandidate || !capturedImage) return;
 
@@ -137,16 +147,16 @@ export default function UploadImage({ candidates }) {
             <Head title="Upload Image" />
 
             <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     {flash?.success && (
                         <div className="mb-4 rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-700">
                             {flash.success}
                         </div>
                     )}
 
-                    <div className="flex gap-6">
+                    <div className="flex flex-col gap-6 lg:flex-row">
                         {/* LEFT: Candidate Table */}
-                        <div className="w-1/2 overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                        <div className="w-full lg:w-1/2 overflow-hidden bg-white shadow-sm sm:rounded-lg">
                             <div className="p-4 border-b border-gray-200">
                                 <h3 className="text-lg font-medium text-gray-900 mb-3">
                                     Kandidat Belum Ada Foto
@@ -172,10 +182,10 @@ export default function UploadImage({ candidates }) {
                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Nama
                                             </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 NIK
                                             </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Departemen
                                             </th>
                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -209,10 +219,10 @@ export default function UploadImage({ candidates }) {
                                                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
                                                         {candidate.name}
                                                     </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-500">
+                                                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
                                                         {candidate.nik || '-'}
                                                     </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-500">
+                                                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
                                                         {candidate.department?.name || '-'}
                                                     </td>
                                                     <td className="px-4 py-3 text-sm">
@@ -242,7 +252,7 @@ export default function UploadImage({ candidates }) {
                         </div>
 
                         {/* RIGHT: Camera & Preview */}
-                        <div className="w-1/2 bg-white shadow-sm sm:rounded-lg">
+                        <div className="w-full lg:w-1/2 bg-white shadow-sm sm:rounded-lg">
                             <div className="p-4 border-b border-gray-200">
                                 <h3 className="text-lg font-medium text-gray-900">
                                     Ambil Foto
@@ -261,14 +271,14 @@ export default function UploadImage({ candidates }) {
                                 {!selectedCandidate ? (
                                     <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                                         <User className="h-16 w-16 mb-4" />
-                                        <p className="text-sm">Pilih kandidat terlebih dahulu dari tabel di sebelah kiri</p>
+                                        <p className="text-sm text-center">Pilih kandidat terlebih dahulu dari daftar di atas</p>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center">
                                         {/* Camera / Preview Area */}
                                         <div
-                                            className="relative bg-black rounded-lg overflow-hidden mb-4"
-                                            style={{ width: '320px', height: '427px' }}
+                                            className="relative bg-black rounded-lg overflow-hidden mb-4 w-full mx-auto"
+                                            style={{ maxWidth: '320px', aspectRatio: '3/4' }}
                                         >
                                             {/* Camera Video */}
                                             <video
@@ -279,7 +289,7 @@ export default function UploadImage({ candidates }) {
                                                 className={`w-full h-full object-cover ${
                                                     isCameraOn && !capturedImage ? '' : 'hidden'
                                                 }`}
-                                                style={{ transform: 'scaleX(-1)' }}
+                                                style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }}
                                             />
 
                                             {/* Captured Image Preview */}
@@ -288,7 +298,7 @@ export default function UploadImage({ candidates }) {
                                                     src={capturedImage}
                                                     alt="Captured"
                                                     className="w-full h-full object-cover"
-                                                    style={{ transform: 'scaleX(-1)' }}
+                                                    style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }}
                                                 />
                                             )}
 
@@ -309,7 +319,7 @@ export default function UploadImage({ candidates }) {
                                             {!isCameraOn && !capturedImage && (
                                                 <button
                                                     onClick={startCamera}
-                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                                                    className="inline-flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
                                                 >
                                                     <Camera className="h-4 w-4" />
                                                     Nyalakan Kamera
@@ -320,17 +330,25 @@ export default function UploadImage({ candidates }) {
                                                 <>
                                                     <button
                                                         onClick={capturePhoto}
-                                                        className="inline-flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                                                        className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
                                                     >
                                                         <Camera className="h-4 w-4" />
                                                         Ambil Foto
                                                     </button>
                                                     <button
+                                                        onClick={switchCamera}
+                                                        className="inline-flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                                                        title="Balik Kamera"
+                                                    >
+                                                        <RefreshCw className="h-4 w-4" />
+                                                        <span className="hidden sm:inline">Balik Kamera</span>
+                                                    </button>
+                                                    <button
                                                         onClick={stopCamera}
-                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+                                                        className="inline-flex items-center gap-2 px-4 py-3 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
                                                     >
                                                         <StopCircle className="h-4 w-4" />
-                                                        Stop
+                                                        <span className="hidden sm:inline">Stop</span>
                                                     </button>
                                                 </>
                                             )}
@@ -339,7 +357,7 @@ export default function UploadImage({ candidates }) {
                                                 <>
                                                     <button
                                                         onClick={retakePhoto}
-                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+                                                        className="inline-flex items-center gap-2 px-4 py-3 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
                                                     >
                                                         <RotateCcw className="h-4 w-4" />
                                                         Ulangi
@@ -347,7 +365,7 @@ export default function UploadImage({ candidates }) {
                                                     <button
                                                         onClick={savePhoto}
                                                         disabled={saving}
-                                                        className="inline-flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                                                        className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
                                                     >
                                                         <Save className="h-4 w-4" />
                                                         {saving ? 'Menyimpan...' : 'Simpan'}
