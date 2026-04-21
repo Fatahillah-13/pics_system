@@ -15,18 +15,21 @@ import {
     SidebarMenuSubButton,
 } from "@/Components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible";
-import { User, Home, ImagePlus, UserPlus2, Users , LucideFilePlus, Settings, IdCardLanyard , LogOut, ChevronRight } from "lucide-react";
+import { User, Home, DatabaseZapIcon, ImagePlus, PlusSquareIcon, IdCardIcon, UserPlus2, Users , LucideFilePlus, Settings, IdCardLanyard , LogOut, ChevronRight } from "lucide-react";
 
 // Definisikan item menu navigasi
 const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Home },
     { title: "Cetak Ulang", url: "/re-print", icon: User },
+    { title: "Bulk Add Kandidat", url: "/candidates/bulk-add", icon: DatabaseZapIcon },
     {
         title: "Karyawan Baru",
         icon: LucideFilePlus,
         subItems: [
             { title: "Tambah Kandidat", url: "/candidates", icon: UserPlus2 },
             { title: "Upload Gambar", url: "/candidates/upload-image", icon: ImagePlus },
+            { title: "Tambah NIK", url: "/candidates/upload-nik", icon: PlusSquareIcon },
+            { title: "Cetak ID Card", url: "/candidates/print-id-card", icon: IdCardIcon },
         ],
     },
     {

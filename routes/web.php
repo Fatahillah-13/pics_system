@@ -6,6 +6,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\CandidateController;
 use App\Http\Controllers\UploadImageController;
+use App\Http\Controllers\AddNIKCandidateController;
+use App\Http\Controllers\PrintIdCardController;
+use App\Http\Controllers\BulkAddCandidateController;
+use App\Http\Controllers\ReprintIdCardController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -34,6 +38,22 @@ Route::middleware('auth', 'verified')->group(function () {
     Route::get('/candidates/upload-image', [UploadImageController::class, 'view'])->name('candidates.uploadImage.view');
     Route::post('/candidates/upload-image', [UploadImageController::class, 'store'])->name('candidates.uploadImage.store');
     Route::patch('/candidates/{candidate}/photo-number', [UploadImageController::class, 'updatePhotoNumber'])->name('candidates.updatePhotoNumber');
+
+    // Add NIK Route
+    Route::get('/candidates/upload-nik', [AddNIKCandidateController::class, 'view'])->name('candidates.uploadNik.view');
+    Route::post('/candidates/upload-nik', [AddNIKCandidateController::class, 'store'])->name('candidates.uploadNik.store');
+
+    // Print ID Card Route
+    Route::get('/candidates/print-id-card', [PrintIdCardController::class, 'view'])->name('candidates.printIdCard.view');
+    Route::post('/candidates/print-id-card', [PrintIdCardController::class, 'store'])->name('candidates.printIdCard.store');
+
+    // Bulk Add Candidate Route
+    Route::get('/candidates/bulk-add', [BulkAddCandidateController::class, 'view'])->name('candidates.bulkAdd.view');
+    Route::post('/candidates/bulk-add', [BulkAddCandidateController::class, 'store'])->name('candidates.bulkAdd.store');
+
+    // Reprint ID Card Route
+    Route::get('/re-print', [ReprintIdCardController::class, 'view'])->name('candidates.reprintIdCard.view');
+    Route::post('/re-print', [ReprintIdCardController::class, 'store'])->name('candidates.reprintIdCard.store');
 });
 
 Route::middleware('auth')->group(function () {
