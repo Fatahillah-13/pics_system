@@ -5,9 +5,11 @@ namespace App\Imports;
 use App\Models\Candidate;
 use App\Models\Department;
 use App\Models\Joblevel;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class CandidateImport implements ToModel, WithHeadingRow, WithValidation
 {
@@ -22,9 +24,28 @@ class CandidateImport implements ToModel, WithHeadingRow, WithValidation
             'joblevel_id' => $joblevel?->id,
             'department_id' => $department?->id,
             'birthplace' => $row['birthplace'] ?? null,
-            'birthdate' => $row['birthdate'] ?? null,
-            'first_working_day' => $row['first_working_day'] ?? null,
+            'birthdate' => $this->parseDate($row['birthdate'] ?? null),
+            'first_working_day' => $this->parseDate($row['first_working_day'] ?? null),
         ]);
+    }
+
+    private function parseDate($value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        // Nilai numerik = Excel serial date
+        if (is_numeric($value)) {
+            return ExcelDate::excelToDateTimeObject($value)->format('Y-m-d');
+        }
+
+        // Format string DD/MM/YYYY dari Excel
+        try {
+            return Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     public function rules(): array
@@ -35,8 +56,8 @@ class CandidateImport implements ToModel, WithHeadingRow, WithValidation
             'department' => 'required|string|exists:departments,name',
             'nik' => 'nullable|string|max:255',
             'birthplace' => 'nullable|string|max:255',
-            'birthdate' => 'nullable|date',
-            'first_working_day' => 'nullable|date',
+            'birthdate' => 'nullable',
+            'first_working_day' => 'nullable',
         ];
     }
 }

@@ -74,8 +74,8 @@ class BulkAddCandidateController extends Controller
                 'joblevel_id'      => $joblevelId,
                 'department_id'    => $departmentId,
                 'birthplace'       => $data['birthplace'] ?? null,
-                'birthdate'        => $data['birthdate'] ?? null,
-                'first_working_day' => $data['first_working_day'] ?? null,
+                'birthdate'        => $this->parseDate($data['birthdate'] ?? null),
+                'first_working_day' => $this->parseDate($data['first_working_day'] ?? null),
                 'image_path'       => null,
             ]);
 
@@ -95,5 +95,27 @@ class BulkAddCandidateController extends Controller
             'message' => $saved . ' kandidat berhasil disimpan.',
             'saved'   => $saved,
         ]);
+    }
+
+    private function parseDate($value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y-m-d');
+        }
+
+        try {
+            return \Carbon\Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            // Coba format Y-m-d (sudah diparse sebelumnya dari preview)
+            try {
+                return \Carbon\Carbon::createFromFormat('Y-m-d', $value)->format('Y-m-d');
+            } catch (\Exception $e2) {
+                return null;
+            }
+        }
     }
 }
