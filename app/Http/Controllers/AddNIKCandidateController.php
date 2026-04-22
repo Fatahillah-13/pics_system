@@ -17,7 +17,7 @@ class AddNIKCandidateController extends Controller
                 ->where(function ($query) {
                     $query->whereNull('nik')->orWhere('nik', '');
                 })
-                ->orderBy('name')
+                ->orderBy('id')
                 ->get(),
         ]);
     }
