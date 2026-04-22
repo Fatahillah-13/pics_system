@@ -1,7 +1,56 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import { useState } from 'react';
+import { Search, Printer } from 'lucide-react';
 
-export default function PrintIdCard() {
+const ITEMS_PER_PAGE = 10;
+
+export default function PrintIdCard({ candidates }) {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [selected, setSelected] = useState([]);
+
+    const filteredCandidates = candidates.filter((c) =>
+        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.nik && c.nik.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (c.department?.name && c.department.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (c.joblevel?.name && c.joblevel.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const paginatedCandidates = filteredCandidates.slice(
+        (safePage - 1) * ITEMS_PER_PAGE,
+        safePage * ITEMS_PER_PAGE
+    );
+
+    const allPageSelected =
+        paginatedCandidates.length > 0 &&
+        paginatedCandidates.every((c) => selected.includes(c.id));
+
+    const toggleSelectAll = () => {
+        if (allPageSelected) {
+            setSelected((prev) => prev.filter((id) => !paginatedCandidates.find((c) => c.id === id)));
+        } else {
+            setSelected((prev) => [
+                ...prev,
+                ...paginatedCandidates.filter((c) => !prev.includes(c.id)).map((c) => c.id),
+            ]);
+        }
+    };
+
+    const toggleSelect = (id) => {
+        setSelected((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+        );
+    };
+
+    const handlePrint = (ids) => {
+        const params = new URLSearchParams();
+        ids.forEach((id) => params.append('ids[]', id));
+        window.open(route('candidates.printIdCard.view') + '?' + params.toString() + '&print=1', '_blank');
+    };
+
     return (
         <AuthenticatedLayout
             header={
@@ -12,12 +61,186 @@ export default function PrintIdCard() {
         >
             <Head title="Print ID Card" />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+            <div className="py-6">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            This is the Print ID Card page.
+                        {/* Header & Search */}
+                        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <h3 className="text-lg font-medium text-gray-900">
+                                    Kandidat Siap Cetak ID Card
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                    Kandidat di bawah sudah memiliki NIK dan foto.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {selected.length > 0 && (
+                                    <button
+                                        onClick={() => handlePrint(selected)}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                                    >
+                                        <Printer className="h-4 w-4" />
+                                        Cetak ({selected.length})
+                                    </button>
+                                )}
+                                <div className="relative w-full sm:w-72">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Cari nama, NIK, departemen..."
+                                        value={searchQuery}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    />
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Table */}
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 w-10">
+                                            <input
+                                                type="checkbox"
+                                                checked={allPageSelected}
+                                                onChange={toggleSelectAll}
+                                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                                            No
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                                            Foto
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Nama
+                                        </th>
+                                        <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Departemen
+                                        </th>
+                                        <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Jenjang
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            NIK
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                                            Aksi
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {paginatedCandidates.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="8" className="px-4 py-10 text-center text-sm text-gray-500">
+                                                {searchQuery
+                                                    ? 'Tidak ada kandidat yang cocok dengan pencarian.'
+                                                    : 'Belum ada kandidat yang memiliki NIK dan foto.'}
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        paginatedCandidates.map((candidate, index) => {
+                                            const globalIndex = (safePage - 1) * ITEMS_PER_PAGE + index + 1;
+                                            const isSelected = selected.includes(candidate.id);
+                                            return (
+                                                <tr
+                                                    key={candidate.id}
+                                                    className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-indigo-50' : ''}`}
+                                                >
+                                                    <td className="px-4 py-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => toggleSelect(candidate.id)}
+                                                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-500">
+                                                        {globalIndex}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <img
+                                                            src={`/storage/${candidate.image_path}`}
+                                                            alt={candidate.name}
+                                                            className="h-12 w-9 object-cover rounded shadow-sm"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                        {candidate.name}
+                                                        <div className="sm:hidden text-xs text-gray-500 mt-0.5">
+                                                            {candidate.department?.name || '-'}
+                                                        </div>
+                                                    </td>
+                                                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
+                                                        {candidate.department?.name || '-'}
+                                                    </td>
+                                                    <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-500">
+                                                        {candidate.joblevel?.name || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700 font-mono">
+                                                        {candidate.nik}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <button
+                                                            onClick={() => handlePrint([candidate.id])}
+                                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                                                        >
+                                                            <Printer className="h-3.5 w-3.5" />
+                                                            Cetak
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm text-gray-600">
+                                <span>
+                                    Halaman {safePage} dari {totalPages} &mdash; {filteredCandidates.length} kandidat
+                                </span>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                        disabled={safePage === 1}
+                                        className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        &laquo;
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                        <button
+                                            key={page}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`px-3 py-1 rounded border ${
+                                                page === safePage
+                                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                                    : 'border-gray-300 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                        disabled={safePage === totalPages}
+                                        className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        &raquo;
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

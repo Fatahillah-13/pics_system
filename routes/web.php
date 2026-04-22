@@ -42,6 +42,7 @@ Route::middleware('auth', 'verified')->group(function () {
     // Add NIK Route
     Route::get('/candidates/upload-nik', [AddNIKCandidateController::class, 'view'])->name('candidates.uploadNik.view');
     Route::post('/candidates/upload-nik', [AddNIKCandidateController::class, 'store'])->name('candidates.uploadNik.store');
+    Route::post('/candidates/upload-nik/many', [AddNIKCandidateController::class, 'storeMany'])->name('candidates.uploadNik.storeMany');
 
     // Print ID Card Route
     Route::get('/candidates/print-id-card', [PrintIdCardController::class, 'view'])->name('candidates.printIdCard.view');
