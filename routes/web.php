@@ -10,6 +10,8 @@ use App\Http\Controllers\AddNIKCandidateController;
 use App\Http\Controllers\PrintIdCardController;
 use App\Http\Controllers\BulkAddCandidateController;
 use App\Http\Controllers\ReprintIdCardController;
+use App\Http\Controllers\SettingsController\UserManagementController;
+use App\Http\Controllers\SettingsController\IdCardTemplateController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -56,6 +58,14 @@ Route::middleware('auth', 'verified')->group(function () {
     // Reprint ID Card Route
     Route::get('/re-print', [ReprintIdCardController::class, 'view'])->name('candidates.reprintIdCard.view');
     Route::post('/re-print', [ReprintIdCardController::class, 'store'])->name('candidates.reprintIdCard.store');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/settings/user-management', [UserManagementController::class, 'view'])->name('settings.userManagement.view');
+    Route::get('/settings/id-card-template', [IdCardTemplateController::class, 'view'])->name('settings.idCardTemplate.view');
+    Route::post('/settings/id-card-template', [IdCardTemplateController::class, 'store'])->name('settings.idCardTemplate.store');
+    Route::post('/settings/id-card-template/{cardTemplate}', [IdCardTemplateController::class, 'update'])->name('settings.idCardTemplate.update');
+    Route::delete('/settings/id-card-template/{cardTemplate}', [IdCardTemplateController::class, 'destroy'])->name('settings.idCardTemplate.destroy');
 });
 
 Route::middleware('auth')->group(function () {

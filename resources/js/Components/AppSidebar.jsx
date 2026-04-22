@@ -37,8 +37,8 @@ const menuItems = [
         icon: Settings,
         subItems: [
             { title: "Profile", url: "/profile", icon: User },
-            { title: "Users Settings", url: "/users-settings", icon: Users },
-            { title: "ID Card Template", url: "/id-card-template", icon: IdCardLanyard },
+            { title: "Users Settings", url: "/settings/user-management", icon: Users },
+            { title: "ID Card Template", url: "/settings/id-card-template", icon: IdCardLanyard },
         ],
     },
 ];
