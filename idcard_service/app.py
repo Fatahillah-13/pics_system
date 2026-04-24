@@ -116,10 +116,10 @@ def draw_text_with_spacing(
 def process_single_card(candidate: Dict) -> Dict:
     """Process a single ID card"""
     try:
-        # Extract data
-        nama = candidate.get("name", "")
-        departemen = candidate.get("department", "")
-        level = candidate.get("job_level", "")
+        # Extract data (uppercase untuk nama, departemen, jabatan)
+        nama = candidate.get("name", "").upper()
+        departemen = candidate.get("department", "").upper()
+        level = candidate.get("job_level", "").upper()
         employee_id = candidate.get("employee_id", "")
         foto_filename = candidate.get("photo_filename", "")
         card_template = candidate.get("card_template", "")

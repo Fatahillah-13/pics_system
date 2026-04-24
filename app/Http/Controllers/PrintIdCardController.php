@@ -38,6 +38,8 @@ class PrintIdCardController extends Controller
         $validated = $request->validate([
             'candidate_ids' => 'required|array|min:1',
             'candidate_ids.*' => 'exists:candidates,id',
+            'ctpat_ids' => 'nullable|array',
+            'ctpat_ids.*' => 'integer',
         ]);
 
         try {
@@ -52,7 +54,7 @@ class PrintIdCardController extends Controller
             }
 
             // Print ID cards
-            $result = $this->printingService->printCards($candidates);
+            $result = $this->printingService->printCards($candidates, $validated['ctpat_ids'] ?? []);
 
             // Check if printing was successful
             if (isset($result[0]['status']) && $result[0]['status'] === 'success') {

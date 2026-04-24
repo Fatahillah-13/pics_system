@@ -38,11 +38,13 @@ class IdCardPrintingService
      * @param array|\Illuminate\Support\Collection $candidates
      * @return array
      */
-    public function printCards($candidates): array
+    public function printCards($candidates, array $ctpatIds = []): array
     {
         // Format candidate data for Python service
-        $formattedCandidates = collect($candidates)->map(function ($candidate) {
-            return $this->formatCandidateData($candidate);
+        $ctpatIdSet = array_flip($ctpatIds);
+        $formattedCandidates = collect($candidates)->map(function ($candidate) use ($ctpatIdSet) {
+            $isCtpat = $candidate instanceof Candidate && isset($ctpatIdSet[$candidate->id]);
+            return $this->formatCandidateData($candidate, $isCtpat);
         })->toArray();
 
         Log::info('Sending print request to ID Card Service', [
@@ -80,15 +82,15 @@ class IdCardPrintingService
     /**
      * Format candidate data for Python service
      */
-    protected function formatCandidateData($candidate): array
+    protected function formatCandidateData($candidate, bool $isCtpat = false): array
     {
         // If it's a Candidate model
         if ($candidate instanceof Candidate) {
             // Load relationships if not loaded
             $candidate->loadMissing(['joblevel', 'department']);
 
-            // Determine template based on department/joblevel
-            $template = $this->determineTemplate($candidate);
+            // Determine template based on department/joblevel and CTPAT status
+            $template = $this->determineTemplate($candidate, $isCtpat);
 
             return [
                 'name' => $candidate->name,
@@ -114,7 +116,7 @@ class IdCardPrintingService
     /**
      * Determine which template to use based on candidate data
      */
-    protected function determineTemplate(Candidate $candidate): string
+    protected function determineTemplate(Candidate $candidate, bool $isCtpat = false): string
     {
         // Load relationships
         $candidate->loadMissing(['joblevel', 'department']);
@@ -122,7 +124,8 @@ class IdCardPrintingService
         // Find matching template using the model method
         $template = \App\Models\CardTemplate::findForCandidate(
             $candidate->joblevel_id,
-            $candidate->department_id
+            $candidate->department_id,
+            $isCtpat
         );
 
         if (!$template) {

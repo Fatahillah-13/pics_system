@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Search, Printer, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Printer, AlertCircle, CheckCircle, Download } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -11,6 +11,7 @@ export default function PrintIdCard({ candidates, serviceStatus }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [selected, setSelected] = useState([]);
     const [printing, setPrinting] = useState(false);
+    const [ctpatSelected, setCtpatSelected] = useState(new Set());
 
     const filteredCandidates = candidates.filter((c) =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -47,12 +48,24 @@ export default function PrintIdCard({ candidates, serviceStatus }) {
         );
     };
 
+    const toggleCtpat = (id) => {
+        setCtpatSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
     const handlePrint = (ids) => {
         if (printing) return;
         setPrinting(true);
         router.post(
             route('candidates.printIdCard.store'),
-            { candidate_ids: ids },
+            {
+                candidate_ids: ids,
+                ctpat_ids: ids.filter((id) => ctpatSelected.has(id)),
+            },
             {
                 preserveScroll: true,
                 onSuccess: (page) => {
@@ -89,10 +102,25 @@ export default function PrintIdCard({ candidates, serviceStatus }) {
 
                     {/* Flash Messages */}
                     {flash?.success && (
-                        <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-700">
-                            <CheckCircle className="h-4 w-4 shrink-0" />
-                            {flash.success}
-                            {flash.errors && <span className="ml-1 text-yellow-700">({flash.errors})</span>}
+                        <div className="mb-4 rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-700">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 shrink-0" />
+                                <div className="flex-1">
+                                    {flash.success}
+                                    {flash.errors && <span className="ml-1 text-yellow-700">({flash.errors})</span>}
+                                </div>
+                                {flash?.pdf_url && (
+                                    <a
+                                        href={flash.pdf_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-md text-xs font-medium hover:bg-green-700 transition-colors"
+                                    >
+                                        <Download className="h-3.5 w-3.5" />
+                                        Buka PDF
+                                    </a>
+                                )}
+                            </div>
                         </div>
                     )}
                     {flash?.error && (
@@ -170,6 +198,9 @@ export default function PrintIdCard({ candidates, serviceStatus }) {
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             NIK
                                         </th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider w-20">
+                                            CTPAT
+                                        </th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                                             Aksi
                                         </th>
@@ -178,7 +209,7 @@ export default function PrintIdCard({ candidates, serviceStatus }) {
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {paginatedCandidates.length === 0 ? (
                                         <tr>
-                                            <td colSpan="8" className="px-4 py-10 text-center text-sm text-gray-500">
+                                            <td colSpan="9" className="px-4 py-10 text-center text-sm text-gray-500">
                                                 {searchQuery
                                                     ? 'Tidak ada kandidat yang cocok dengan pencarian.'
                                                     : 'Belum ada kandidat yang memiliki NIK dan foto.'}
@@ -225,6 +256,14 @@ export default function PrintIdCard({ candidates, serviceStatus }) {
                                                     </td>
                                                     <td className="px-4 py-3 text-sm text-gray-700 font-mono">
                                                         {candidate.nik}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={ctpatSelected.has(candidate.id)}
+                                                            onChange={() => toggleCtpat(candidate.id)}
+                                                            className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                                                        />
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <button
