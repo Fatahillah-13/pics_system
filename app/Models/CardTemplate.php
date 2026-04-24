@@ -17,6 +17,10 @@ class CardTemplate extends Model
         'template_path',
     ];
 
+    protected $casts = [
+        'ctpat' => 'boolean',
+    ];
+
     public function joblevels(): BelongsToMany
     {
         return $this->belongsToMany(Joblevel::class, 'card_template_joblevel');
@@ -25,5 +29,16 @@ class CardTemplate extends Model
     public function departments(): BelongsToMany
     {
         return $this->belongsToMany(Department::class, 'card_template_department');
+    }
+
+    public static function findForCandidate($joblevelId, $departmentId, $ctpat = null)
+    {
+        return static::query()
+            ->when($ctpat !== null, fn ($q) => $q->where('ctpat', $ctpat))
+            ->where(function ($query) use ($joblevelId, $departmentId) {
+                $query->whereHas('joblevels', fn ($q) => $q->where('joblevel_id', $joblevelId))
+                    ->orWhereHas('departments', fn ($q) => $q->where('department_id', $departmentId));
+            })
+            ->first();
     }
 }

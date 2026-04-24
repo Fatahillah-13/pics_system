@@ -1,14 +1,16 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Search, Printer } from 'lucide-react';
+import { Search, Printer, AlertCircle, CheckCircle } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
 
-export default function PrintIdCard({ candidates }) {
+export default function PrintIdCard({ candidates, serviceStatus }) {
+    const { flash } = usePage().props;
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [selected, setSelected] = useState([]);
+    const [printing, setPrinting] = useState(false);
 
     const filteredCandidates = candidates.filter((c) =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -46,9 +48,23 @@ export default function PrintIdCard({ candidates }) {
     };
 
     const handlePrint = (ids) => {
-        const params = new URLSearchParams();
-        ids.forEach((id) => params.append('ids[]', id));
-        window.open(route('candidates.printIdCard.view') + '?' + params.toString() + '&print=1', '_blank');
+        if (printing) return;
+        setPrinting(true);
+        router.post(
+            route('candidates.printIdCard.store'),
+            { candidate_ids: ids },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const pdfUrl = page.props.flash?.pdf_url;
+                    if (pdfUrl) {
+                        window.open(pdfUrl, '_blank');
+                    }
+                    setSelected([]);
+                },
+                onFinish: () => setPrinting(false),
+            }
+        );
     };
 
     return (
@@ -63,6 +79,28 @@ export default function PrintIdCard({ candidates }) {
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    {/* Service Status Warning */}
+                    {serviceStatus === false && (
+                        <div className="mb-4 flex items-center gap-2 rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-800">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            Service cetak ID Card sedang tidak tersedia. Pastikan Python service sudah berjalan.
+                        </div>
+                    )}
+
+                    {/* Flash Messages */}
+                    {flash?.success && (
+                        <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-700">
+                            <CheckCircle className="h-4 w-4 shrink-0" />
+                            {flash.success}
+                            {flash.errors && <span className="ml-1 text-yellow-700">({flash.errors})</span>}
+                        </div>
+                    )}
+                    {flash?.error && (
+                        <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {flash.error}
+                        </div>
+                    )}
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         {/* Header & Search */}
                         <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -78,10 +116,11 @@ export default function PrintIdCard({ candidates }) {
                                 {selected.length > 0 && (
                                     <button
                                         onClick={() => handlePrint(selected)}
-                                        className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                                        disabled={printing || serviceStatus === false}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Printer className="h-4 w-4" />
-                                        Cetak ({selected.length})
+                                        {printing ? 'Mencetak...' : `Cetak (${selected.length})`}
                                     </button>
                                 )}
                                 <div className="relative w-full sm:w-72">
@@ -190,10 +229,11 @@ export default function PrintIdCard({ candidates }) {
                                                     <td className="px-4 py-3">
                                                         <button
                                                             onClick={() => handlePrint([candidate.id])}
-                                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                                                            disabled={printing || serviceStatus === false}
+                                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             <Printer className="h-3.5 w-3.5" />
-                                                            Cetak
+                                                            {printing ? '...' : 'Cetak'}
                                                         </button>
                                                     </td>
                                                 </tr>
