@@ -21,6 +21,7 @@ class Candidate extends Model
         'nik',
         'image_path',
         'photo_number',
+        'is_printed',
     ];
 
     protected function casts(): array
@@ -28,6 +29,7 @@ class Candidate extends Model
         return [
             'birthdate' => 'date',
             'first_working_day' => 'date',
+            'is_printed' => 'boolean',
         ];
     }
 

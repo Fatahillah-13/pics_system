@@ -19,17 +19,27 @@ class PrintIdCardController extends Controller
         $this->printingService = $printingService;
     }
 
-    public function view()
+    public function view(Request $request)
     {
+        $filter = $request->query('filter', 'unprinted'); // 'unprinted', 'printed', or 'all'
+
+        $query = Candidate::with(['joblevel', 'department'])
+            ->whereNotNull('nik')
+            ->whereNotNull('image_path');
+
+        if ($filter === 'unprinted') {
+            $query->where('is_printed', false);
+        } elseif ($filter === 'printed') {
+            $query->where('is_printed', true);
+        }
+        // 'all' doesn't add any filter
+
         return Inertia::render('NewCandidates/PrintIdCard', [
-            'candidates' => Candidate::with(['joblevel', 'department'])
-                ->whereNotNull('nik')
-                ->whereNotNull('image_path')
-                ->latest()
-                ->get(),
+            'candidates' => $query->latest()->get(),
             'departments' => Department::all(),
             'joblevels' => Joblevel::all(),
             'serviceStatus' => $this->printingService->healthCheck(),
+            'currentFilter' => $filter,
         ]);
     }
 
@@ -61,6 +71,10 @@ class PrintIdCardController extends Controller
                 $pdfUrl = $result[0]['combined_output'];
                 $totalCards = $result[0]['total_idcards'];
                 $totalErrors = $result[0]['total_errors'] ?? 0;
+
+                // Update is_printed status for successfully printed candidates
+                Candidate::whereIn('id', $validated['candidate_ids'])
+                    ->update(['is_printed' => true]);
 
                 Log::info('ID Cards printed successfully', [
                     'total' => $totalCards,

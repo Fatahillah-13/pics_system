@@ -1,17 +1,32 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Search, Printer, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { Search, Printer, AlertCircle, CheckCircle, Download, Filter } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
 
-export default function PrintIdCard({ candidates, serviceStatus }) {
+export default function PrintIdCard({ candidates, serviceStatus, currentFilter = 'unprinted' }) {
     const { flash } = usePage().props;
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [selected, setSelected] = useState([]);
     const [printing, setPrinting] = useState(false);
     const [ctpatSelected, setCtpatSelected] = useState(new Set());
+
+    const handleFilterChange = (filter) => {
+        router.get(
+            route('candidates.printIdCard.view'),
+            { filter },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    setSelected([]);
+                    setCurrentPage(1);
+                },
+            }
+        );
+    };
 
     const filteredCandidates = candidates.filter((c) =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -130,14 +145,56 @@ export default function PrintIdCard({ candidates, serviceStatus }) {
                         </div>
                     )}
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                        {/* Filter Tabs */}
+                        <div className="border-b border-gray-200">
+                            <div className="flex gap-1 px-4 pt-4">
+                                <button
+                                    onClick={() => handleFilterChange('unprinted')}
+                                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                                        currentFilter === 'unprinted'
+                                            ? 'bg-white text-indigo-600 border-t border-x border-gray-200'
+                                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <Filter className="h-4 w-4 inline-block mr-1.5" />
+                                    Belum Dicetak
+                                </button>
+                                <button
+                                    onClick={() => handleFilterChange('printed')}
+                                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                                        currentFilter === 'printed'
+                                            ? 'bg-white text-indigo-600 border-t border-x border-gray-200'
+                                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <CheckCircle className="h-4 w-4 inline-block mr-1.5" />
+                                    Sudah Dicetak
+                                </button>
+                                <button
+                                    onClick={() => handleFilterChange('all')}
+                                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                                        currentFilter === 'all'
+                                            ? 'bg-white text-indigo-600 border-t border-x border-gray-200'
+                                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Semua
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Header & Search */}
                         <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
                                 <h3 className="text-lg font-medium text-gray-900">
-                                    Kandidat Siap Cetak ID Card
+                                    {currentFilter === 'printed' ? 'Kandidat Sudah Dicetak' : currentFilter === 'unprinted' ? 'Kandidat Siap Cetak ID Card' : 'Semua Kandidat'}
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-0.5">
-                                    Kandidat di bawah sudah memiliki NIK dan foto.
+                                    {currentFilter === 'printed'
+                                        ? 'Daftar kandidat yang sudah pernah dicetak ID Card-nya.'
+                                        : currentFilter === 'unprinted'
+                                        ? 'Kandidat di bawah sudah memiliki NIK dan foto, tapi belum dicetak.'
+                                        : 'Semua kandidat yang memiliki NIK dan foto.'}
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -212,6 +269,10 @@ export default function PrintIdCard({ candidates, serviceStatus }) {
                                             <td colSpan="9" className="px-4 py-10 text-center text-sm text-gray-500">
                                                 {searchQuery
                                                     ? 'Tidak ada kandidat yang cocok dengan pencarian.'
+                                                    : currentFilter === 'printed'
+                                                    ? 'Belum ada kandidat yang sudah dicetak.'
+                                                    : currentFilter === 'unprinted'
+                                                    ? 'Belum ada kandidat yang siap dicetak.'
                                                     : 'Belum ada kandidat yang memiliki NIK dan foto.'}
                                             </td>
                                         </tr>

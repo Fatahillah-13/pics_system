@@ -13,7 +13,7 @@ class Config:
     # Laravel Integration
     LARAVEL_PUBLIC_PATH = os.getenv('LARAVEL_PUBLIC_PATH', r'D:\sistem\pics_system\public')
     LARAVEL_STORAGE_PATH = os.getenv('LARAVEL_STORAGE_PATH', r'D:\sistem\pics_system\storage\app\public')
-    LARAVEL_BASE_URL = os.getenv('LARAVEL_BASE_URL', 'http://127.0.0.1:8000')
+    LARAVEL_BASE_URL = os.getenv('LARAVEL_BASE_URL', 'http://10.10.16.125:8000')
 
     # Paths
     TEMPLATE_BASE_PATH = Path(LARAVEL_STORAGE_PATH)
@@ -62,6 +62,6 @@ class Config:
     }
 
     # CORS
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000').split(',')
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:8000,http://127.0.0.1:8000,http://10.10.16.125:8000').split(',')
 
 config = Config()
