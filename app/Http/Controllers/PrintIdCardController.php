@@ -7,8 +7,9 @@ use App\Models\Department;
 use App\Models\Joblevel;
 use App\Services\IdCardPrintingService;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 
 class PrintIdCardController extends Controller
 {
@@ -76,6 +77,8 @@ class PrintIdCardController extends Controller
                 Candidate::whereIn('id', $validated['candidate_ids'])
                     ->update(['is_printed' => true]);
 
+                $this->copyPhotosToNewEmployees($candidates);
+
                 Log::info('ID Cards printed successfully', [
                     'total' => $totalCards,
                     'errors' => $totalErrors,
@@ -100,4 +103,40 @@ class PrintIdCardController extends Controller
             return back()->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
+
+    private function copyPhotosToNewEmployees(\Illuminate\Support\Collection $candidates): void
+    {
+        $destinationDir = storage_path('new_employees_photo');
+
+        if (! is_dir($destinationDir)) {
+            mkdir($destinationDir, 0755, true);
+        }
+
+        foreach ($candidates as $candidate) {
+            if (! $candidate->nik || ! $candidate->image_path) {
+                continue;
+            }
+
+            $sourcePath = Storage::disk('public')->path($candidate->image_path);
+
+            if (! file_exists($sourcePath)) {
+                Log::warning('Photo not found when copying to new_employees_photo', [
+                    'candidate_id' => $candidate->id,
+                    'image_path'   => $candidate->image_path,
+                ]);
+                continue;
+            }
+
+            $destinationPath = $destinationDir . DIRECTORY_SEPARATOR . $candidate->nik . '.jpg';
+
+            if (! copy($sourcePath, $destinationPath)) {
+                Log::error('Failed to copy photo to new_employees_photo', [
+                    'candidate_id' => $candidate->id,
+                    'source'       => $sourcePath,
+                    'destination'  => $destinationPath,
+                ]);
+            }
+        }
+    }
+
 }
