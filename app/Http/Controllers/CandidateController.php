@@ -48,6 +48,19 @@ class CandidateController extends Controller
         return redirect()->back();
     }
 
+    public function edit(Candidate $candidate)
+    {
+        $candidate->load(['joblevel', 'department']);
+        $departments = Department::all();
+        $joblevels = Joblevel::all();
+
+        return Inertia::render('NewCandidates/EditCandidate', [
+            'candidate' => $candidate,
+            'departments' => $departments,
+            'joblevels' => $joblevels,
+        ]);
+    }
+
     public function update(Request $request, Candidate $candidate)
     {
         $validated = $request->validate([

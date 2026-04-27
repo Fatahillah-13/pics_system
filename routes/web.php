@@ -31,6 +31,7 @@ Route::middleware('auth', 'verified')->group(function () {
     // Candidate Routes
     Route::get('/candidates', [CandidateController::class, 'index'])->name('candidates.index');
     Route::post('/candidates', [CandidateController::class, 'store'])->name('candidates.store');
+    Route::get('/candidates/{candidate}/edit', [CandidateController::class, 'edit'])->name('candidates.edit');
     Route::put('/candidates/{candidate}', [CandidateController::class, 'update'])->name('candidates.update');
     Route::delete('/candidates/{candidate}', [CandidateController::class, 'destroy'])->name('candidates.destroy');
     Route::post('/candidates/import', [CandidateController::class, 'import'])->name('candidates.import');
