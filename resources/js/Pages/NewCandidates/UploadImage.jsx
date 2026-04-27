@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, StopCircle, RotateCcw, Save, User, Search, RefreshCw } from 'lucide-react';
+import { Camera, StopCircle, RotateCcw, Save, User, Search, RefreshCw, RotateCw } from 'lucide-react';
 
 export default function UploadImage({ candidates }) {
     const { flash } = usePage().props;
@@ -16,6 +16,7 @@ export default function UploadImage({ candidates }) {
     const [editingValue, setEditingValue] = useState('');
     const [savingPhotoNumber, setSavingPhotoNumber] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [rotation, setRotation] = useState(0);
     const ITEMS_PER_PAGE = 5;
 
     const videoRef = useRef(null);
@@ -82,42 +83,63 @@ export default function UploadImage({ candidates }) {
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
-
-        // Portrait: 480x640
-        canvas.width = 480;
-        canvas.height = 640;
-
         const ctx = canvas.getContext('2d');
 
-        // Calculate crop to maintain portrait aspect ratio from video
+        // Adjust canvas dimensions based on rotation
+        if (rotation === 90 || rotation === 270) {
+            // Swap dimensions for 90° and 270° rotation
+            canvas.width = 640;
+            canvas.height = 480;
+        } else {
+            // Normal portrait dimensions
+            canvas.width = 480;
+            canvas.height = 640;
+        }
+
+        // Calculate crop to maintain aspect ratio from video
         const videoAspect = video.videoWidth / video.videoHeight;
-        const targetAspect = 480 / 640;
+        const targetAspect = rotation === 90 || rotation === 270 ? 640 / 480 : 480 / 640;
 
         let sx, sy, sw, sh;
         if (videoAspect > targetAspect) {
-            // Video is wider, crop sides
             sh = video.videoHeight;
             sw = sh * targetAspect;
             sx = (video.videoWidth - sw) / 2;
             sy = 0;
         } else {
-            // Video is taller, crop top/bottom
             sw = video.videoWidth;
             sh = sw / targetAspect;
             sx = 0;
             sy = (video.videoHeight - sh) / 2;
         }
 
-        ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 480, 640);
+        // Apply rotation to canvas
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+
+        if (rotation === 90 || rotation === 270) {
+            ctx.drawImage(video, sx, sy, sw, sh, -320, -240, 480, 640);
+        } else {
+            ctx.drawImage(video, sx, sy, sw, sh, -240, -320, 480, 640);
+        }
+
+        ctx.restore();
+
         const imageData = canvas.toDataURL('image/jpeg', 0.9);
         setCapturedImage(imageData);
         stopCamera();
-    }, [stopCamera]);
+    }, [rotation, stopCamera]);
 
     const retakePhoto = useCallback(() => {
         setCapturedImage(null);
+        setRotation(0);
         startCamera();
     }, [startCamera]);
+
+    const rotatePhoto = useCallback(() => {
+        setRotation((prev) => (prev + 90) % 360);
+    }, []);
 
     const switchCamera = useCallback(() => {
         const newMode = facingMode === 'user' ? 'environment' : 'user';
@@ -141,6 +163,7 @@ export default function UploadImage({ candidates }) {
             {
                 onSuccess: () => {
                     setCapturedImage(null);
+                    setRotation(0);
                     setSelectedCandidate(null);
                     setSaving(false);
                 },
@@ -408,7 +431,10 @@ export default function UploadImage({ candidates }) {
                                                 className={`w-full h-full object-cover ${
                                                     isCameraOn && !capturedImage ? '' : 'hidden'
                                                 }`}
-                                                style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }}
+                                                style={{
+                                                    transform: `${facingMode === 'user' ? 'scaleX(-1)' : ''} rotate(${rotation}deg)`,
+                                                    transformOrigin: 'center center'
+                                                }}
                                             />
 
                                             {/* Captured Image Preview */}
@@ -455,12 +481,20 @@ export default function UploadImage({ candidates }) {
                                                         Ambil Foto
                                                     </button>
                                                     <button
+                                                        onClick={rotatePhoto}
+                                                        className="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                                                        title="Putar 90°"
+                                                    >
+                                                        <RotateCw className="h-4 w-4" />
+                                                        <span className="hidden sm:inline">Putar</span>
+                                                    </button>
+                                                    <button
                                                         onClick={switchCamera}
                                                         className="inline-flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
                                                         title="Balik Kamera"
                                                     >
                                                         <RefreshCw className="h-4 w-4" />
-                                                        <span className="hidden sm:inline">Balik Kamera</span>
+                                                        <span className="hidden sm:inline">Balik</span>
                                                     </button>
                                                     <button
                                                         onClick={stopCamera}
