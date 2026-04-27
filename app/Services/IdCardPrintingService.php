@@ -79,6 +79,19 @@ class IdCardPrintingService
         }
     }
 
+    protected function formatName(string $name): string {
+        $words = explode(' ', trim($name));
+        if(count($words) <= 2) {
+            return $name;
+        }
+
+        $firstTwo = array_slice($words, 0, 2);
+        $rest = array_slice($words, 2);
+
+        $abbreviated = array_map(fn($word) => strtoupper($word[0]) . '.' , $rest);
+        return implode(' ', array_merge($firstTwo, $abbreviated));
+    }
+
     /**
      * Format candidate data for Python service
      */
@@ -93,7 +106,7 @@ class IdCardPrintingService
             $template = $this->determineTemplate($candidate, $isCtpat);
 
             return [
-                'name' => $candidate->name,
+                'name' => $this->formatName($candidate->name),
                 'department' => $candidate->department->name ?? 'N/A',
                 'job_level' => $candidate->joblevel->name ?? 'N/A',
                 'employee_id' => $candidate->nik ?? 'N/A',
@@ -104,7 +117,7 @@ class IdCardPrintingService
 
         // If it's already an array (for reprint scenarios)
         return [
-            'name' => $candidate['name'] ?? '',
+            'name' => $this->formatName($candidate['name'] ?? ''),
             'department' => $candidate['department'] ?? '',
             'job_level' => $candidate['job_level'] ?? '',
             'employee_id' => $candidate['employee_id'] ?? '',

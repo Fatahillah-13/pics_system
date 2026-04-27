@@ -4,7 +4,7 @@ from datetime import datetime
 
 # Configuration
 PYTHON_SERVICE_URL = "http://127.0.0.1:5000"
-LARAVEL_BASE_URL = "http://127.0.0.1:8000"
+LARAVEL_BASE_URL = "http://10.10.16.125:8000"
 
 def test_health_check():
     """Test Python service health check"""
