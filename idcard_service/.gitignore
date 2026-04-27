@@ -42,8 +42,5 @@ logs/
 .DS_Store
 Thumbs.db
 
-#Storage
-storage/
-
 # Fonts (jika tidak ingin dicommit)
 # fonts/
