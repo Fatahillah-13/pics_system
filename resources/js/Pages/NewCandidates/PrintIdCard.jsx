@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Search, Printer, AlertCircle, CheckCircle, Download, Filter } from 'lucide-react';
+import { Search, Printer, AlertCircle, CheckCircle, Download, Filter, Edit2, Trash2 } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -12,6 +12,8 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
     const [selected, setSelected] = useState([]);
     const [printing, setPrinting] = useState(false);
     const [ctpatSelected, setCtpatSelected] = useState(new Set());
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     const handleFilterChange = (filter) => {
         router.get(
@@ -93,6 +95,30 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                 onFinish: () => setPrinting(false),
             }
         );
+    };
+
+    const handleEdit = (candidateId) => {
+        router.get(route('candidates.edit', candidateId));
+    };
+
+    const handleDelete = (candidate) => {
+        setDeleteConfirm(candidate);
+    };
+
+    const confirmDelete = () => {
+        if (!deleteConfirm) return;
+        setDeleting(true);
+        router.delete(route('candidates.destroy', deleteConfirm.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setDeleteConfirm(null);
+                setDeleting(false);
+                setSelected((prev) => prev.filter((id) => id !== deleteConfirm.id));
+            },
+            onError: () => {
+                setDeleting(false);
+            },
+        });
     };
 
     return (
@@ -258,7 +284,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                         <th className="px-4 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider w-20">
                                             CTPAT
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                                             Aksi
                                         </th>
                                     </tr>
@@ -327,14 +353,30 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                                         />
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <button
-                                                            onClick={() => handlePrint([candidate.id])}
-                                                            disabled={printing || serviceStatus === false}
-                                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            <Printer className="h-3.5 w-3.5" />
-                                                            {printing ? '...' : 'Cetak'}
-                                                        </button>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <button
+                                                                onClick={() => handlePrint([candidate.id])}
+                                                                disabled={printing || serviceStatus === false}
+                                                                className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                <Printer className="h-3.5 w-3.5" />
+                                                                {printing ? '...' : 'Cetak'}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleEdit(candidate.id)}
+                                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                                title="Edit kandidat"
+                                                            >
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(candidate)}
+                                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                                title="Hapus kandidat"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -384,6 +426,49 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                <Trash2 className="h-5 w-5 text-red-600" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                    Hapus Kandidat?
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-1">
+                                    Apakah Anda yakin ingin menghapus kandidat:
+                                </p>
+                                <p className="text-sm font-semibold text-gray-900 mb-2">
+                                    {deleteConfirm.name}
+                                </p>
+                                <p className="text-sm text-red-600">
+                                    Tindakan ini tidak dapat dibatalkan.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                            >
+                                {deleting ? 'Menghapus...' : 'Hapus'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }
