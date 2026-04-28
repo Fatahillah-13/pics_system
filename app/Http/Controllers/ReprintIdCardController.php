@@ -43,6 +43,39 @@ class ReprintIdCardController extends Controller
         }
     }
 
+    /**
+     * Attempt to locate employee photo from the HRD network share.
+     * If found, copy it to local storage so the ID card service can access it.
+     * Returns the storage-relative path (e.g. "reprint_photos/12345.jpg") or null.
+     */
+    private function resolvePhotoFromNetworkShare(string $nik): ?string
+    {
+        $networkDir = '#Folder Share HR Foto Karyawan';
+        $sourceFile = $networkDir . '\\' . $nik . '.jpg';
+
+        if (! @file_exists($sourceFile)) {
+            return null;
+        }
+
+        $destDir = storage_path('app/public/reprint_photos');
+        if (! is_dir($destDir)) {
+            mkdir($destDir, 0755, true);
+        }
+
+        $destFile = $destDir . DIRECTORY_SEPARATOR . $nik . '.jpg';
+
+        if (! @copy($sourceFile, $destFile)) {
+            Log::warning('Failed to copy employee photo from network share', [
+                'source' => $sourceFile,
+                'destination' => $destFile,
+                'nik' => $nik,
+            ]);
+            return null;
+        }
+
+        return 'reprint_photos/' . $nik . '.jpg';
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -59,7 +92,9 @@ class ReprintIdCardController extends Controller
                 ->where('nik', $card['employee_id'])
                 ->first();
 
-            $photoFilename = $candidate?->image_path ?? ($card['employee_id'].'.jpg');
+            // Priority: network share photo → candidate image_path → fallback {nik}.jpg
+            $networkPhoto = $this->resolvePhotoFromNetworkShare($card['employee_id']);
+            $photoFilename = $networkPhoto ?? $candidate?->image_path ?? ($card['employee_id'].'.jpg');
 
             $cardTemplate = 'templates/default_template.png';
             if ($candidate) {
