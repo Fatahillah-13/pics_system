@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\ReprintPreviewImport;
 use App\Models\Candidate;
 use App\Models\CardTemplate;
 use App\Services\IdCardPrintingService;
@@ -10,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReprintIdCardController extends Controller
 {
@@ -76,15 +78,114 @@ class ReprintIdCardController extends Controller
         return 'reprint_photos/' . $nik . '.jpg';
     }
 
+    public function importPreview(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        try {
+            $sheets = Excel::toArray(new ReprintPreviewImport(), $request->file('file'));
+            $rows   = $sheets[0] ?? [];
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Gagal membaca file: '.$e->getMessage()], 422);
+        }
+
+        // Filter ulang untuk membuang phantom rows yang mungkin lolos dari import class
+        $rows = array_values(array_filter($rows, fn($r) => ($r['nik'] ?? '') !== '' || ($r['name'] ?? '') !== ''));
+
+        if (empty($rows)) {
+            return response()->json(['error' => 'File tidak memiliki data yang valid.'], 422);
+        }
+
+        if (count($rows) > 50) {
+            return response()->json(['error' => 'Maksimal 50 baris per import.'], 422);
+        }
+
+        $preview = [];
+        foreach ($rows as $index => $row) {
+            $nik  = $row['nik']  ?? '';
+            $name = $row['name'] ?? '';
+
+            $errors = [];
+            if ($nik === '')  $errors[] = 'NIK kosong';
+            if ($name === '') $errors[] = 'Nama kosong';
+
+            $department  = '';
+            $jobLevel    = '';
+            $hasPhoto    = false;
+            $photoSource = null;
+
+            if ($nik !== '') {
+                // Try network share first for photo
+                $networkPhoto = $this->resolvePhotoFromNetworkShare($nik);
+                if ($networkPhoto) {
+                    $hasPhoto    = true;
+                    $photoSource = 'network';
+                }
+
+                // Look up dept / job_level from external API
+                try {
+                    $response = Http::timeout(5)
+                        ->get('http://10.10.100.193:1002/api.employees.v1/employees', [
+                            'search' => $nik,
+                        ]);
+                    if ($response->ok()) {
+                        $apiData  = $response->json('data', []);
+                        $employee = collect($apiData)->firstWhere('number_of_employees', $nik);
+                        if ($employee) {
+                            $department = $employee['department'] ?? '';
+                            $jobLevel   = $employee['job_level']  ?? '';
+                        }
+                    }
+                } catch (\Exception) {
+                    // API tidak tersedia, biarkan department/jobLevel kosong
+                }
+
+                // Fallback foto: cek image_path di tabel candidates
+                if (! $hasPhoto) {
+                    $candidate = Candidate::where('nik', $nik)->value('image_path');
+                    if ($candidate) {
+                        $hasPhoto    = true;
+                        $photoSource = 'db';
+                    }
+                }
+            }
+
+            $preview[] = [
+                'row'          => $index + 1,
+                'nik'          => $nik,
+                'name'         => $name,
+                'department'   => $department,
+                'job_level'    => $jobLevel,
+                'has_photo'    => $hasPhoto,
+                'photo_source' => $photoSource,
+                'errors'       => $errors,
+                'valid'        => empty($errors),
+            ];
+        }
+
+        $totalValid = count(array_filter($preview, fn($r) => $r['valid']));
+
+        return response()->json([
+            'rows'    => $preview,
+            'summary' => [
+                'total'   => count($preview),
+                'valid'   => $totalValid,
+                'invalid' => count($preview) - $totalValid,
+            ],
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'cards' => 'required|array|min:1|max:10',
-            'cards.*.name' => 'required|string',
-            'cards.*.department' => 'required|string',
-            'cards.*.job_level' => 'required|string',
+            'cards'               => 'required|array|min:1|max:50',
+            'cards.*.name'        => 'required|string',
+            'cards.*.department'  => 'nullable|string',
+            'cards.*.job_level'   => 'nullable|string',
             'cards.*.employee_id' => 'required|string',
-            'cards.*.ctpat' => 'sometimes|boolean',
+            'cards.*.ctpat'       => 'sometimes|boolean',
         ]);
 
         // Resolve photo_filename and card_template from local DB for each card
