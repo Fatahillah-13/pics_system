@@ -13,9 +13,8 @@ const MAX_PRINT_LIST = 10;
 function StatusBadge({ status }) {
     const isActive = status === 'active';
     return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-            isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-        }`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+            }`}>
             <BadgeCheck className="h-3 w-3" />
             {isActive ? 'Aktif' : status}
         </span>
@@ -23,6 +22,7 @@ function StatusBadge({ status }) {
 }
 
 function EmployeeCard({ employee, inList, onPrintNow, onAddToList, onRemoveFromList, isPrinting }) {
+    const [ctpat, setCtpat] = useState(false);
     return (
         <div className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -43,9 +43,18 @@ function EmployeeCard({ employee, inList, onPrintNow, onAddToList, onRemoveFromL
                     <span className="font-mono">{employee.number_of_employees}</span>
                 </div>
             </div>
-            <div className="flex-shrink-0 flex flex-col gap-2 sm:flex-row">
+            <div className="flex-shrink-0 flex flex-col gap-2 sm:flex-row items-start">
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none pt-1">
+                    <input
+                        type="checkbox"
+                        checked={ctpat}
+                        onChange={(e) => setCtpat(e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    C-TPAT
+                </label>
                 <button
-                    onClick={() => onPrintNow(employee)}
+                    onClick={() => onPrintNow(employee, ctpat)}
                     disabled={isPrinting}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                 >
@@ -128,7 +137,17 @@ export default function Reprint({ serviceStatus }) {
     const handleAddToList = (employee) => {
         if (printList.length >= MAX_PRINT_LIST) return;
         if (isInList(employee)) return;
-        setPrintList((prev) => [...prev, employee]);
+        setPrintList((prev) => [...prev, { ...employee, ctpat: false }]);
+    };
+
+    const handleToggleCtpat = (employee) => {
+        setPrintList((prev) =>
+            prev.map((e) =>
+                e.number_of_employees === employee.number_of_employees
+                    ? { ...e, ctpat: !e.ctpat }
+                    : e
+            )
+        );
     };
 
     const handleRemoveFromList = (employee) => {
@@ -143,6 +162,7 @@ export default function Reprint({ serviceStatus }) {
             department: emp.department,
             job_level: emp.job_level,
             employee_id: emp.number_of_employees,
+            ctpat: emp.ctpat ?? false,
         }));
 
     const submitPrint = (cards) => {
@@ -163,8 +183,8 @@ export default function Reprint({ serviceStatus }) {
         );
     };
 
-    const handlePrintNow = (employee) => {
-        submitPrint(buildCards([employee]));
+    const handlePrintNow = (employee, ctpat) => {
+        submitPrint(buildCards([{ ...employee, ctpat: ctpat ?? false }]));
     };
 
     const handlePrintList = () => {
@@ -290,11 +310,10 @@ export default function Reprint({ serviceStatus }) {
                                         <ListChecks className="h-4 w-4 text-indigo-600" />
                                         List Cetak
                                     </h3>
-                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                        printList.length >= MAX_PRINT_LIST
-                                            ? 'bg-red-100 text-red-600'
-                                            : 'bg-indigo-100 text-indigo-600'
-                                    }`}>
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${printList.length >= MAX_PRINT_LIST
+                                        ? 'bg-red-100 text-red-600'
+                                        : 'bg-indigo-100 text-indigo-600'
+                                        }`}>
                                         {printList.length}/{MAX_PRINT_LIST}
                                     </span>
                                 </div>
@@ -314,6 +333,16 @@ export default function Reprint({ serviceStatus }) {
                                                     <p className="text-xs font-medium text-gray-800 truncate">{emp.name}</p>
                                                     <p className="text-xs text-gray-500 truncate">{emp.department} · {emp.job_level}</p>
                                                     <p className="text-xs text-gray-400 font-mono">{emp.number_of_employees}</p>
+                                                    {/* Checkbox C-TPAT di list */}
+                                                    <label className="flex items-center gap-1.5 mt-1 text-xs text-indigo-700 cursor-pointer select-none">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={emp.ctpat ?? false}
+                                                            onChange={() => handleToggleCtpat(emp)}
+                                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                        />
+                                                        C-TPAT
+                                                    </label>
                                                 </div>
                                                 <button
                                                     onClick={() => handleRemoveFromList(emp)}

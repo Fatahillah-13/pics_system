@@ -50,7 +50,7 @@ class ReprintIdCardController extends Controller
      */
     private function resolvePhotoFromNetworkShare(string $nik): ?string
     {
-        $networkDir = '#Folder Share HR Foto Karyawan';
+        $networkDir = '\\\\10.10.100.237\\hrd\\HRD DEPARTMENT\\ANDY@HR-Team\\Foto Karyawan HWI';
         $sourceFile = $networkDir . '\\' . $nik . '.jpg';
 
         if (! @file_exists($sourceFile)) {
@@ -84,6 +84,7 @@ class ReprintIdCardController extends Controller
             'cards.*.department' => 'required|string',
             'cards.*.job_level' => 'required|string',
             'cards.*.employee_id' => 'required|string',
+            'cards.*.ctpat' => 'sometimes|boolean',
         ]);
 
         // Resolve photo_filename and card_template from local DB for each card
@@ -97,15 +98,17 @@ class ReprintIdCardController extends Controller
             $photoFilename = $networkPhoto ?? $candidate?->image_path ?? ($card['employee_id'].'.jpg');
 
             $cardTemplate = 'templates/default_template.png';
+            $ctpatFlag = isset($card['ctpat']) ? (bool) $card['ctpat'] : null;
             if ($candidate) {
                 $template = CardTemplate::findForCandidate(
                     $candidate->joblevel_id,
                     $candidate->department_id,
-                    false
+                    $ctpatFlag
                 ) ?? CardTemplate::first();
                 $cardTemplate = $template?->template_path ?? $cardTemplate;
             } else {
-                $template = CardTemplate::first();
+                $template = CardTemplate::where('ctpat', (bool) $ctpatFlag)->first()
+                    ?? CardTemplate::first();
                 $cardTemplate = $template?->template_path ?? $cardTemplate;
             }
 
