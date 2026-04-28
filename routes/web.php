@@ -23,7 +23,39 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+    $total = \App\Models\Candidate::count();
+    $sudahCetak = \App\Models\Candidate::where('is_printed', true)->count();
+    $belumCetak = $total - $sudahCetak;
+    $belumFoto = \App\Models\Candidate::where(function ($q) {
+        $q->whereNull('image_path')->orWhere('image_path', '');
+    })->count();
+    $belumNik = \App\Models\Candidate::where(function ($q) {
+        $q->whereNull('nik')->orWhere('nik', '');
+    })->count();
+
+    $upcoming = \App\Models\Candidate::whereNotNull('first_working_day')
+        ->whereBetween('first_working_day', [now()->toDateString(), now()->addDays(7)->toDateString()])
+        ->orderBy('first_working_day')
+        ->get(['id', 'name', 'first_working_day', 'is_printed', 'department_id'])
+        ->map(fn($c) => [
+            'id' => $c->id,
+            'name' => $c->name,
+            'first_working_day' => $c->first_working_day->toDateString(),
+            'is_printed' => $c->is_printed,
+        ]);
+
+    return Inertia::render('Dashboard', [
+        'stats' => [
+            'total'      => $total,
+            'sudahCetak' => $sudahCetak,
+            'belumCetak' => $belumCetak,
+            'belumFoto'  => $belumFoto,
+            'belumNik'   => $belumNik,
+            'sudahFoto'  => $total - $belumFoto,
+            'sudahNik'   => $total - $belumNik,
+        ],
+        'upcoming' => $upcoming,
+    ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth', 'verified')->group(function () {
