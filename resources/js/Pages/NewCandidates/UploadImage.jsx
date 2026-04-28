@@ -85,19 +85,14 @@ export default function UploadImage({ candidates }) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
 
-        // Adjust canvas dimensions based on rotation
-        if (rotation === 90 || rotation === 270) {
-            // Swap dimensions for 90° and 270° rotation
-            canvas.width = 640;
-            canvas.height = 480;
-        } else {
-            // Normal portrait dimensions
-            canvas.width = 480;
-            canvas.height = 640;
-        }
+        // Always portrait output
+        canvas.width = 480;
+        canvas.height = 640;
 
         // Calculate crop to maintain aspect ratio from video
         const videoAspect = video.videoWidth / video.videoHeight;
+
+        // targetAspect stays the same — for 90/270, the rotated drawing area is 640×480
         const targetAspect = rotation === 90 || rotation === 270 ? 640 / 480 : 480 / 640;
 
         let sx, sy, sw, sh;
@@ -119,7 +114,7 @@ export default function UploadImage({ candidates }) {
         ctx.rotate((rotation * Math.PI) / 180);
 
         if (rotation === 90 || rotation === 270) {
-            ctx.drawImage(video, sx, sy, sw, sh, -320, -240, 480, 640);
+            ctx.drawImage(video, sx, sy, sw, sh, -320, -240, 640, 480);
         } else {
             ctx.drawImage(video, sx, sy, sw, sh, -240, -320, 480, 640);
         }
@@ -289,72 +284,70 @@ export default function UploadImage({ candidates }) {
                                             paginatedCandidates.map((candidate, index) => {
                                                 const globalIndex = (safePage - 1) * ITEMS_PER_PAGE + index;
                                                 return (
-                                                <tr
-                                                    key={candidate.id}
-                                                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                                                        selectedCandidate?.id === candidate.id
+                                                    <tr
+                                                        key={candidate.id}
+                                                        className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedCandidate?.id === candidate.id
                                                             ? 'bg-indigo-50 border-l-4 border-l-indigo-500'
                                                             : ''
-                                                    }`}
-                                                    onClick={() => setSelectedCandidate(candidate)}
-                                                >
-                                                    <td
-                                                        className="px-4 py-3 text-sm text-gray-500"
-                                                        onDoubleClick={(e) => {
-                                                            if (sortBy !== 'photo_number') return;
-                                                            e.stopPropagation();
-                                                            setEditingPhotoNumber(candidate.id);
-                                                            setEditingValue(candidate.photo_number ?? '');
-                                                        }}
-                                                        title={sortBy === 'photo_number' ? 'Klik dua kali untuk edit no. foto' : ''}
+                                                            }`}
+                                                        onClick={() => setSelectedCandidate(candidate)}
                                                     >
-                                                        {sortBy === 'photo_number' && editingPhotoNumber === candidate.id ? (
-                                                            <input
-                                                                ref={editInputRef}
-                                                                type="number"
-                                                                min="1"
-                                                                value={editingValue}
-                                                                onChange={(e) => setEditingValue(e.target.value)}
-                                                                onBlur={() => savePhotoNumber(candidate.id)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') savePhotoNumber(candidate.id);
-                                                                    if (e.key === 'Escape') setEditingPhotoNumber(null);
-                                                                    e.stopPropagation();
-                                                                }}
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                disabled={savingPhotoNumber === candidate.id}
-                                                                className="w-16 px-1 py-0.5 border border-indigo-400 rounded text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-                                                            />
-                                                        ) : (
-                                                            <span className={sortBy === 'photo_number' ? 'cursor-pointer hover:text-indigo-600' : ''}>
-                                                                {sortBy === 'photo_number'
-                                                                    ? (candidate.photo_number ?? '-')
-                                                                    : globalIndex + 1}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                        {candidate.name}
-                                                    </td>
-                                                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
-                                                        {candidate.department?.name || '-'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm">
-                                                        <button
-                                                            onClick={(e) => {
+                                                        <td
+                                                            className="px-4 py-3 text-sm text-gray-500"
+                                                            onDoubleClick={(e) => {
+                                                                if (sortBy !== 'photo_number') return;
                                                                 e.stopPropagation();
-                                                                setSelectedCandidate(candidate);
+                                                                setEditingPhotoNumber(candidate.id);
+                                                                setEditingValue(candidate.photo_number ?? '');
                                                             }}
-                                                            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                                                                selectedCandidate?.id === candidate.id
+                                                            title={sortBy === 'photo_number' ? 'Klik dua kali untuk edit no. foto' : ''}
+                                                        >
+                                                            {sortBy === 'photo_number' && editingPhotoNumber === candidate.id ? (
+                                                                <input
+                                                                    ref={editInputRef}
+                                                                    type="number"
+                                                                    min="1"
+                                                                    value={editingValue}
+                                                                    onChange={(e) => setEditingValue(e.target.value)}
+                                                                    onBlur={() => savePhotoNumber(candidate.id)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') savePhotoNumber(candidate.id);
+                                                                        if (e.key === 'Escape') setEditingPhotoNumber(null);
+                                                                        e.stopPropagation();
+                                                                    }}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    disabled={savingPhotoNumber === candidate.id}
+                                                                    className="w-16 px-1 py-0.5 border border-indigo-400 rounded text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                                                                />
+                                                            ) : (
+                                                                <span className={sortBy === 'photo_number' ? 'cursor-pointer hover:text-indigo-600' : ''}>
+                                                                    {sortBy === 'photo_number'
+                                                                        ? (candidate.photo_number ?? '-')
+                                                                        : globalIndex + 1}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                            {candidate.name}
+                                                        </td>
+                                                        <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
+                                                            {candidate.department?.name || '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedCandidate(candidate);
+                                                                }}
+                                                                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${selectedCandidate?.id === candidate.id
                                                                     ? 'bg-indigo-600 text-white'
                                                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                            }`}
-                                                        >
-                                                            Pilih
-                                                        </button>
-                                                    </td>
-                                                </tr>
+                                                                    }`}
+                                                            >
+                                                                Pilih
+                                                            </button>
+                                                        </td>
+                                                    </tr>
                                                 );
                                             })
                                         )}
@@ -428,9 +421,8 @@ export default function UploadImage({ candidates }) {
                                                 autoPlay
                                                 playsInline
                                                 muted
-                                                className={`w-full h-full object-cover ${
-                                                    isCameraOn && !capturedImage ? '' : 'hidden'
-                                                }`}
+                                                className={`w-full h-full object-cover ${isCameraOn && !capturedImage ? '' : 'hidden'
+                                                    }`}
                                                 style={{
                                                     transform: `${facingMode === 'user' ? 'scaleX(-1)' : ''} rotate(${rotation}deg)`,
                                                     transformOrigin: 'center center'
