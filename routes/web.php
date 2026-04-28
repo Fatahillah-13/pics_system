@@ -34,9 +34,10 @@ Route::get('/dashboard', function () {
     })->count();
 
     $upcoming = \App\Models\Candidate::whereNotNull('first_working_day')
-        ->whereBetween('first_working_day', [now()->toDateString(), now()->addDays(7)->toDateString()])
+        ->where('first_working_day', '<=', now()->addDays(7)->toDateString())
+        ->where('is_printed', false)
         ->orderBy('first_working_day')
-        ->get(['id', 'name', 'first_working_day', 'is_printed', 'department_id'])
+        ->get(['id', 'name', 'first_working_day', 'is_printed'])
         ->map(fn($c) => [
             'id' => $c->id,
             'name' => $c->name,

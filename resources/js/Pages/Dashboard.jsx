@@ -1,9 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
 import {
     Users, Printer, CheckCircle2, ImageOff, CreditCard,
     UserPlus2, ImagePlus, BadgeCheck, RotateCcw,
-    Calendar, ChevronRight, DatabaseZap, ArrowRight,
+    Calendar, ChevronRight, DatabaseZap, ChevronLeft,
 } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, bg, iconColor, valueColor }) {
@@ -98,12 +99,24 @@ export default function Dashboard({ stats, upcoming }) {
         { label: 'ID Dicetak',    count: stats.sudahCetak, circle: 'bg-green-600',  bar: 'bg-green-500'  },
     ];
 
+    const [upcomingPage, setUpcomingPage] = useState(1);
+    const UPCOMING_PER_PAGE = 5;
+    const upcomingTotalPages = Math.ceil(upcoming.length / UPCOMING_PER_PAGE);
+    const upcomingSlice = upcoming.slice(
+        (upcomingPage - 1) * UPCOMING_PER_PAGE,
+        upcomingPage * UPCOMING_PER_PAGE,
+    );
+
     const today = new Date();
     const formatDate = (dateStr) => {
         const d = new Date(dateStr);
         const diffDays = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
         const label = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-        return { label, diffDays };
+        if (diffDays < 0) return { label, diffDays, badge: 'Sudah lewat', color: 'bg-rose-100 text-rose-600' };
+        if (diffDays === 0) return { label, diffDays, badge: 'Hari ini', color: 'bg-rose-100 text-rose-600' };
+        if (diffDays === 1) return { label, diffDays, badge: 'Besok', color: 'bg-amber-100 text-amber-600' };
+        if (diffDays <= 3) return { label, diffDays, badge: `${diffDays} hari lagi`, color: 'bg-amber-100 text-amber-600' };
+        return { label, diffDays, badge: `${diffDays} hari lagi`, color: 'bg-blue-100 text-blue-600' };
     };
 
     return (
@@ -141,35 +154,73 @@ export default function Dashboard({ stats, upcoming }) {
                 {/* Reminder: Upcoming first_working_day */}
                 {upcoming.length > 0 && (
                     <div className="bg-white rounded-xl shadow-sm border border-amber-200 p-6">
+                        {/* Header */}
                         <div className="flex items-center gap-2 mb-4">
                             <Calendar className="w-5 h-5 text-amber-500" />
                             <h3 className="text-sm font-semibold text-gray-700">
-                                Kandidat Mulai Kerja dalam 7 Hari
+                                Kandidat Belum Cetak &amp; Mulai Kerja ≤7 Hari
                             </h3>
                             <span className="ml-auto bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
                                 {upcoming.length} kandidat
                             </span>
                         </div>
+
+                        {/* List */}
                         <div className="divide-y divide-gray-100">
-                            {upcoming.map((c) => {
-                                const { label, diffDays } = formatDate(c.first_working_day);
+                            {upcomingSlice.map((c) => {
+                                const { label, badge, color } = formatDate(c.first_working_day);
                                 return (
                                     <div key={c.id} className="flex items-center gap-3 py-2.5">
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-gray-800 truncate">{c.name}</p>
                                             <p className="text-xs text-gray-400">{label}</p>
                                         </div>
-                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${diffDays <= 1 ? 'bg-rose-100 text-rose-600' : diffDays <= 3 ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-                                            {diffDays === 0 ? 'Hari ini' : diffDays === 1 ? 'Besok' : `${diffDays} hari lagi`}
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}>
+                                            {badge}
                                         </span>
-                                        {c.is_printed
-                                            ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" title="Sudah cetak" />
-                                            : <Printer className="w-4 h-4 text-amber-400 shrink-0" title="Belum cetak" />
-                                        }
+                                        <Printer className="w-4 h-4 text-amber-400 shrink-0" title="Belum cetak" />
                                     </div>
                                 );
                             })}
                         </div>
+
+                        {/* Pagination */}
+                        {upcomingTotalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                                <p className="text-xs text-gray-400">
+                                    Halaman {upcomingPage} dari {upcomingTotalPages}
+                                </p>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setUpcomingPage((p) => Math.max(1, p - 1))}
+                                        disabled={upcomingPage === 1}
+                                        className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    {Array.from({ length: upcomingTotalPages }, (_, i) => i + 1).map((page) => (
+                                        <button
+                                            key={page}
+                                            onClick={() => setUpcomingPage(page)}
+                                            className={`w-7 h-7 text-xs rounded-md font-medium transition-colors ${
+                                                page === upcomingPage
+                                                    ? 'bg-amber-500 text-white'
+                                                    : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={() => setUpcomingPage((p) => Math.min(upcomingTotalPages, p + 1))}
+                                        disabled={upcomingPage === upcomingTotalPages}
+                                        className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
