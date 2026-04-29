@@ -33,17 +33,17 @@ class Config:
     FONT_CONFIG = {
         "nama": {
             "path": str(FONTS_DIR / "Futura-Bold.ttf"),
-            "size": 38,
-            "letter_spacing": 4
+            "size": 40,
+            "letter_spacing": 1
         },
         "departemen": {
             "path": str(FONTS_DIR / "FUTURAMEDIUM.TTF"),
-            "size": 36,
+            "size": 38,
             "letter_spacing": 2
         },
         "level": {
             "path": str(FONTS_DIR / "Futura.ttf"),
-            "size": 24,
+            "size": 36,
             "letter_spacing": 2
         },
         "employee_id": {
@@ -55,10 +55,10 @@ class Config:
 
     # Spacing Configuration
     SPACING_CONFIG = {
-        "foto_to_nama": 20,
-        "nama_to_departemen": 34,
-        "departemen_to_level": 24,
-        "level_to_employee_id": 24
+        "foto_to_nama": 24,
+        "nama_to_departemen": 40,
+        "departemen_to_level": 28,
+        "level_to_employee_id": 32
     }
 
     # CORS

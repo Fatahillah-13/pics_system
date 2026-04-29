@@ -1,11 +1,10 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+﻿import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useRef, useCallback } from 'react';
 import {
     Search, Printer, Plus, X, AlertCircle, CheckCircle,
     Download, Loader2, ListChecks, User, Building2, Briefcase,
-    BadgeCheck, Trash2, FileSpreadsheet, UploadCloud, ImageOff,
-    ImageIcon, TriangleAlert
+    BadgeCheck, Trash2, ImageOff, ImageIcon, TriangleAlert, Table2
 } from 'lucide-react';
 
 const EMPLOYEE_API = 'http://10.10.100.193:1002/api.employees.v1/employees';
@@ -22,68 +21,36 @@ function StatusBadge({ status }) {
     );
 }
 
-/* ─── Preview row status badge ─── */
-function RowStatusBadge({ row }) {
-    if (row.errors.length > 0) {
-        return (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                <AlertCircle className="h-3 w-3" />
-                {row.errors.join(', ')}
-            </span>
-        );
-    }
-    if (!row.has_photo) {
-        return (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                <TriangleAlert className="h-3 w-3" />
-                Foto tidak ditemukan
-            </span>
-        );
-    }
-    return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-            <CheckCircle className="h-3 w-3" />
-            Valid
-        </span>
-    );
-}
-
-/* ─── Import preview table ─── */
-function ImportPreviewTable({ previewData, rowStates, onToggleCtpat, onToggleInclude, onPrint, isPrinting, onClear }) {
-    const { rows, summary } = previewData;
-    const includedValid = rows.filter((r) => r.valid && rowStates[r.row]?.included !== false).length;
+/* ─── Bulk Reprint inline table ─── */
+function BulkReprintTable({ rows, onNikChange, onNikBlur, onToggleCtpat, onRemoveRow, onAddRow, onPrint, isPrinting, serviceStatus }) {
+    const validRows = rows.filter((r) => r.nik.trim() !== '' && r.name !== '' && r.name !== null);
+    const includedCount = validRows.length;
 
     return (
         <div className="space-y-4">
-            {/* Summary bar */}
+            {/* Header actions */}
             <div className="flex flex-wrap items-center gap-3">
-                <span className="text-xs font-medium text-gray-600">
-                    Total: <strong>{summary.total}</strong>
+                <span className="text-xs font-medium text-gray-500">
+                    {rows.length}/{MAX_PRINT_LIST} baris &nbsp;·&nbsp; {includedCount} siap cetak
                 </span>
-                <span className="text-xs font-medium text-green-700">
-                    Valid: <strong>{summary.valid}</strong>
-                </span>
-                {summary.invalid > 0 && (
-                    <span className="text-xs font-medium text-red-600">
-                        Error: <strong>{summary.invalid}</strong>
-                    </span>
-                )}
                 <div className="flex-1" />
                 <button
-                    onClick={onClear}
-                    className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                    onClick={onAddRow}
+                    disabled={rows.length >= MAX_PRINT_LIST}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 border border-indigo-200 bg-indigo-50 rounded-md hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                    <X className="h-3.5 w-3.5" /> Hapus Import
+                    <Plus className="h-3.5 w-3.5" />
+                    Tambah Baris
                 </button>
                 <button
                     onClick={onPrint}
-                    disabled={includedValid === 0 || isPrinting}
+                    disabled={includedCount === 0 || isPrinting || serviceStatus === false}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {isPrinting ? (
                         <><Loader2 className="h-4 w-4 animate-spin" />Mencetak...</>
                     ) : (
-                        <><Printer className="h-4 w-4" />Cetak ({includedValid})</>
+                        <><Printer className="h-4 w-4" />Cetak ({includedCount})</>
                     )}
                 </button>
             </div>
@@ -93,62 +60,92 @@ function ImportPreviewTable({ previewData, rowStates, onToggleCtpat, onToggleInc
                 <table className="min-w-full text-xs">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-3 py-2 text-left font-semibold text-gray-600">#</th>
-                            <th className="px-3 py-2 text-left font-semibold text-gray-600">NIK</th>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-600 w-8">#</th>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-600 w-36">NIK</th>
                             <th className="px-3 py-2 text-left font-semibold text-gray-600">Nama</th>
                             <th className="px-3 py-2 text-left font-semibold text-gray-600">Departemen</th>
                             <th className="px-3 py-2 text-left font-semibold text-gray-600">Job Level</th>
-                            <th className="px-3 py-2 text-center font-semibold text-gray-600">Foto</th>
-                            <th className="px-3 py-2 text-center font-semibold text-gray-600">C-TPAT</th>
-                            <th className="px-3 py-2 text-left font-semibold text-gray-600">Status</th>
-                            <th className="px-3 py-2 text-center font-semibold text-gray-600">Cetak</th>
+                            <th className="px-3 py-2 text-center font-semibold text-gray-600 w-14">Foto</th>
+                            <th className="px-3 py-2 text-center font-semibold text-gray-600 w-16">C-TPAT</th>
+                            <th className="px-3 py-2 text-center font-semibold text-gray-600 w-10"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                        {rows.map((row) => {
-                            const state = rowStates[row.row] ?? { ctpat: false, included: true };
-                            const isExcluded = !row.valid || state.included === false;
-                            return (
-                                <tr
-                                    key={row.row}
-                                    className={isExcluded ? 'opacity-50 bg-gray-50' : ''}
-                                >
-                                    <td className="px-3 py-2 text-gray-400">{row.row}</td>
-                                    <td className="px-3 py-2 font-mono text-gray-700">{row.nik || <span className="text-red-400">—</span>}</td>
-                                    <td className="px-3 py-2 text-gray-800">{row.name || <span className="text-red-400">—</span>}</td>
-                                    <td className="px-3 py-2 text-gray-600">{row.department || <span className="text-gray-300">—</span>}</td>
-                                    <td className="px-3 py-2 text-gray-600">{row.job_level || <span className="text-gray-300">—</span>}</td>
-                                    <td className="px-3 py-2 text-center">
-                                        {row.has_photo
-                                            ? <ImageIcon className="h-3.5 w-3.5 text-green-500 mx-auto" />
-                                            : <ImageOff className="h-3.5 w-3.5 text-yellow-400 mx-auto" />}
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
+                        {rows.map((row, idx) => (
+                            <tr key={row.id} className={row.loading ? 'opacity-60' : ''}>
+                                <td className="px-3 py-1.5 text-gray-400 select-none">{idx + 1}</td>
+                                <td className="px-3 py-1.5">
+                                    <div className="relative">
                                         <input
-                                            type="checkbox"
-                                            checked={state.ctpat}
-                                            disabled={!row.valid || state.included === false}
-                                            onChange={() => onToggleCtpat(row.row)}
-                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            type="text"
+                                            value={row.nik}
+                                            onChange={(e) => onNikChange(row.id, e.target.value)}
+                                            onBlur={() => onNikBlur(row.id)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') onNikBlur(row.id); }}
+                                            placeholder="Ketik NIK…"
+                                            className="w-full px-2 py-1 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-400"
                                         />
-                                    </td>
-                                    <td className="px-3 py-2"><RowStatusBadge row={row} /></td>
-                                    <td className="px-3 py-2 text-center">
-                                        {row.valid && (
-                                            <input
-                                                type="checkbox"
-                                                checked={state.included !== false}
-                                                onChange={() => onToggleInclude(row.row)}
-                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                            />
+                                        {row.loading && (
+                                            <Loader2 className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-indigo-400 animate-spin" />
                                         )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
+                                    </div>
+                                    {row.error && (
+                                        <p className="mt-0.5 text-red-500 text-[10px] flex items-center gap-0.5">
+                                            <AlertCircle className="h-2.5 w-2.5" />{row.error}
+                                        </p>
+                                    )}
+                                </td>
+                                <td className="px-3 py-1.5 text-gray-800">
+                                    {row.name
+                                        ? <span>{row.name}</span>
+                                        : <span className="text-gray-300 italic">—</span>
+                                    }
+                                </td>
+                                <td className="px-3 py-1.5 text-gray-600">
+                                    {row.department || <span className="text-gray-300">—</span>}
+                                </td>
+                                <td className="px-3 py-1.5 text-gray-600">
+                                    {row.job_level || <span className="text-gray-300">—</span>}
+                                </td>
+                                <td className="px-3 py-1.5 text-center">
+                                    {row.nik.trim() === '' ? (
+                                        <span className="text-gray-200">—</span>
+                                    ) : row.has_photo ? (
+                                        <ImageIcon className="h-3.5 w-3.5 text-green-500 mx-auto" />
+                                    ) : (
+                                        <ImageOff className="h-3.5 w-3.5 text-yellow-400 mx-auto" />
+                                    )}
+                                </td>
+                                <td className="px-3 py-1.5 text-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={row.ctpat}
+                                        onChange={() => onToggleCtpat(row.id)}
+                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                </td>
+                                <td className="px-3 py-1.5 text-center">
+                                    <button
+                                        onClick={() => onRemoveRow(row.id)}
+                                        className="text-gray-300 hover:text-red-500 transition-colors"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>
+
+            {rows.length < MAX_PRINT_LIST && (
+                <button
+                    onClick={onAddRow}
+                    className="text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-1"
+                >
+                    <Plus className="h-3 w-3" /> Tambah baris lagi
+                </button>
+            )}
         </div>
     );
 }
@@ -215,6 +212,20 @@ function EmployeeCard({ employee, inList, onPrintNow, onAddToList, onRemoveFromL
     );
 }
 
+let _rowCounter = 0;
+const newRow = () => ({
+    id: ++_rowCounter,
+    nik: '',
+    name: '',
+    department: '',
+    job_level: '',
+    has_photo: false,
+    photo_source: null,
+    ctpat: false,
+    loading: false,
+    error: null,
+});
+
 export default function Reprint({ serviceStatus }) {
     const { flash } = usePage().props;
 
@@ -229,226 +240,155 @@ export default function Reprint({ serviceStatus }) {
     const [printList, setPrintList] = useState([]);
     const [isPrinting, setIsPrinting] = useState(false);
 
-    /* ── Import state ── */
-    const [activeTab, setActiveTab] = useState('search'); // 'search' | 'import'
-    const [previewData, setPreviewData] = useState(null);   // null or { rows, summary }
-    const [rowStates, setRowStates] = useState({});          // { [row]: { ctpat, included } }
-    const [isImporting, setIsImporting] = useState(false);
-    const [importError, setImportError] = useState(null);
-    const fileInputRef = useRef(null);
+    /* ── Bulk reprint state ── */
+    const [activeTab, setActiveTab] = useState('search'); // 'search' | 'bulk'
+    const [bulkRows, setBulkRows] = useState(() => [newRow(), newRow(), newRow()]);
 
     const debounceRef = useRef(null);
 
     const searchEmployees = useCallback(async (searchQuery) => {
-        if (!searchQuery.trim()) {
-            setResults([]);
-            setHasSearched(false);
-            setSearchError(null);
-            return;
-        }
-
-        setIsSearching(true);
-        setSearchError(null);
-
+        if (!searchQuery.trim()) { setResults([]); setHasSearched(false); setSearchError(null); return; }
+        setIsSearching(true); setSearchError(null);
         try {
-            const url = `${EMPLOYEE_API}/?search=${encodeURIComponent(searchQuery.trim())}`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const res = await fetch(`${EMPLOYEE_API}/?search=${encodeURIComponent(searchQuery.trim())}`);
+            if (!res.ok) throw new Error();
             const json = await res.json();
-            setResults(json.data ?? []);
-            setHasSearched(true);
-        } catch (err) {
+            setResults(json.data ?? []); setHasSearched(true);
+        } catch {
             setSearchError('Gagal memuat data karyawan. Periksa koneksi ke server.');
-            setResults([]);
-            setHasSearched(true);
-        } finally {
-            setIsSearching(false);
-        }
+            setResults([]); setHasSearched(true);
+        } finally { setIsSearching(false); }
     }, []);
 
     const handleQueryChange = (e) => {
-        const val = e.target.value;
-        setQuery(val);
+        const val = e.target.value; setQuery(val);
         clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => searchEmployees(val), 500);
     };
 
-    const isInList = (employee) =>
-        printList.some((e) => e.number_of_employees === employee.number_of_employees);
+    const isInList = (emp) => printList.some((e) => e.number_of_employees === emp.number_of_employees);
 
-    const handleAddToList = (employee) => {
-        if (printList.length >= MAX_PRINT_LIST) return;
-        if (isInList(employee)) return;
-        setPrintList((prev) => [...prev, { ...employee, ctpat: false }]);
+    const handleAddToList = (emp) => {
+        if (printList.length >= MAX_PRINT_LIST || isInList(emp)) return;
+        setPrintList((prev) => [...prev, { ...emp, ctpat: false }]);
     };
 
-    const handleToggleCtpat = (employee) => {
-        setPrintList((prev) =>
-            prev.map((e) =>
-                e.number_of_employees === employee.number_of_employees
-                    ? { ...e, ctpat: !e.ctpat }
-                    : e
-            )
-        );
-    };
+    const handleToggleCtpat = (emp) => setPrintList((prev) =>
+        prev.map((e) => e.number_of_employees === emp.number_of_employees ? { ...e, ctpat: !e.ctpat } : e));
 
-    const handleRemoveFromList = (employee) => {
-        setPrintList((prev) =>
-            prev.filter((e) => e.number_of_employees !== employee.number_of_employees)
-        );
-    };
+    const handleRemoveFromList = (emp) => setPrintList((prev) =>
+        prev.filter((e) => e.number_of_employees !== emp.number_of_employees));
 
-    const buildCards = (employees) =>
-        employees.map((emp) => ({
-            name: emp.name,
-            department: emp.department ?? '',
-            job_level: emp.job_level ?? '',
-            employee_id: emp.number_of_employees,
-            ctpat: emp.ctpat ?? false,
-        }));
+    const buildCards = (employees) => employees.map((emp) => ({
+        name: emp.name, department: emp.department ?? '', job_level: emp.job_level ?? '',
+        employee_id: emp.number_of_employees, ctpat: emp.ctpat ?? false,
+    }));
 
     const submitPrint = (cards) => {
         if (isPrinting) return;
         setIsPrinting(true);
-        router.post(
-            route('candidates.reprintIdCard.store'),
-            { cards },
-            {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    const pdfUrl = page.props.flash?.pdf_url;
-                    if (pdfUrl) window.open(pdfUrl, '_blank');
-                    setPrintList([]);
-                },
-                onFinish: () => setIsPrinting(false),
-            }
-        );
+        router.post(route('candidates.reprintIdCard.store'), { cards }, {
+            preserveScroll: true,
+            onSuccess: (page) => { const u = page.props.flash?.pdf_url; if (u) window.open(u, '_blank'); setPrintList([]); },
+            onFinish: () => setIsPrinting(false),
+        });
     };
 
-    const handlePrintNow = (employee, ctpat) => {
-        submitPrint(buildCards([{ ...employee, ctpat: ctpat ?? false }]));
-    };
+    const handlePrintNow = (emp, ctpat) => submitPrint(buildCards([{ ...emp, ctpat: ctpat ?? false }]));
+    const handlePrintList = () => { if (printList.length) submitPrint(buildCards(printList)); };
 
-    const handlePrintList = () => {
-        if (printList.length === 0) return;
-        submitPrint(buildCards(printList));
-    };
+    const handleBulkNikChange = (id, value) =>
+        setBulkRows((prev) => prev.map((r) => r.id === id ? { ...r, nik: value, error: null } : r));
 
-    /* ── Import handlers ── */
-    const handleFileChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        // reset input so the same file can be re-selected if needed
-        e.target.value = '';
-
-        setIsImporting(true);
-        setImportError(null);
-        setPreviewData(null);
-        setRowStates({});
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('_token', csrfToken);
-
+    const handleBulkNikBlur = async (id) => {
+        const row = bulkRows.find((r) => r.id === id);
+        if (!row) return;
+        const nik = row.nik.trim();
+        if (nik === '') {
+            setBulkRows((prev) => prev.map((r) => r.id === id
+                ? { ...r, name: '', department: '', job_level: '', has_photo: false, photo_source: null, error: null } : r));
+            return;
+        }
+        if (row.name && row.nik.trim() === nik) return;
+        setBulkRows((prev) => prev.map((r) => r.id === id ? { ...r, loading: true, error: null } : r));
         try {
-            const res = await fetch(route('candidates.reprintIdCard.importPreview'), {
-                method: 'POST',
-                body: formData,
-            });
-            const json = await res.json();
-            if (!res.ok) {
-                setImportError(json.error ?? 'Gagal memproses file.');
+            // Call Employee API directly from browser (same as Search tab)
+            // and backend only for photo check (network share / DB)
+            const [empRes, photoRes] = await Promise.all([
+                fetch(`${EMPLOYEE_API}/?search=${encodeURIComponent(nik)}`),
+                fetch(route('candidates.reprintIdCard.lookup') + '?nik=' + encodeURIComponent(nik)),
+            ]);
+            const empJson = await empRes.json();
+            const photoJson = photoRes.ok ? await photoRes.json() : {};
+
+            const employees = empJson.data ?? [];
+            const emp = employees.find((e) => {
+                const apiNik = String(e.number_of_employees ?? '').trim();
+                return apiNik === nik || apiNik.replace(/^0+/, '') === nik.replace(/^0+/, '');
+            }) ?? (employees.length === 1 ? employees[0] : null);
+
+            if (!emp) {
+                setBulkRows((prev) => prev.map((r) => r.id === id ? { ...r, loading: false, error: 'Karyawan tidak ditemukan' } : r));
                 return;
             }
-            // Initialise per-row state (included=true, ctpat=false)
-            const initStates = {};
-            json.rows.forEach((r) => { initStates[r.row] = { ctpat: false, included: true }; });
-            setRowStates(initStates);
-            setPreviewData(json);
+            setBulkRows((prev) => prev.map((r) => r.id === id ? {
+                ...r, loading: false,
+                name: emp.name || '', department: emp.department || '', job_level: emp.job_level || '',
+                has_photo: photoJson.has_photo ?? false, photo_source: photoJson.photo_source ?? null,
+                error: null,
+            } : r));
         } catch {
-            setImportError('Gagal menghubungi server. Periksa koneksi.');
-        } finally {
-            setIsImporting(false);
+            setBulkRows((prev) => prev.map((r) => r.id === id ? { ...r, loading: false, error: 'Gagal menghubungi server.' } : r));
         }
     };
 
-    const handleToggleImportCtpat = (rowNum) => {
-        setRowStates((prev) => ({
-            ...prev,
-            [rowNum]: { ...prev[rowNum], ctpat: !prev[rowNum]?.ctpat },
+    const handleBulkToggleCtpat = (id) =>
+        setBulkRows((prev) => prev.map((r) => r.id === id ? { ...r, ctpat: !r.ctpat } : r));
+
+    const handleBulkRemoveRow = (id) =>
+        setBulkRows((prev) => { const next = prev.filter((r) => r.id !== id); return next.length ? next : [newRow()]; });
+
+    const handleBulkAddRow = () => {
+        if (bulkRows.length < MAX_PRINT_LIST) setBulkRows((prev) => [...prev, newRow()]);
+    };
+
+    const handleBulkPrint = () => {
+        const cards = bulkRows.filter((r) => r.nik.trim() && r.name).map((r) => ({
+            name: r.name, department: r.department ?? '', job_level: r.job_level ?? '',
+            employee_id: r.nik.trim(), ctpat: r.ctpat,
         }));
-    };
-
-    const handleToggleImportInclude = (rowNum) => {
-        setRowStates((prev) => ({
-            ...prev,
-            [rowNum]: { ...prev[rowNum], included: !(prev[rowNum]?.included ?? true) },
-        }));
-    };
-
-    const handlePrintImport = () => {
-        if (!previewData) return;
-        const cards = previewData.rows
-            .filter((r) => r.valid && rowStates[r.row]?.included !== false)
-            .map((r) => ({
-                name: r.name,
-                department: r.department ?? '',
-                job_level: r.job_level ?? '',
-                employee_id: r.nik,
-                ctpat: rowStates[r.row]?.ctpat ?? false,
-            }));
-        if (cards.length === 0) return;
-        submitPrint(cards);
-    };
-
-    const handleClearImport = () => {
-        setPreviewData(null);
-        setRowStates({});
-        setImportError(null);
+        if (!cards.length || isPrinting) return;
+        setIsPrinting(true);
+        router.post(route('candidates.reprintIdCard.store'), { cards }, {
+            preserveScroll: true,
+            onSuccess: (page) => { const u = page.props.flash?.pdf_url; if (u) window.open(u, '_blank'); },
+            onFinish: () => setIsPrinting(false),
+        });
     };
 
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Reprint ID Card
-                </h2>
-            }
-        >
+        <AuthenticatedLayout header={<h2 className="text-xl font-semibold leading-tight text-gray-800">Reprint ID Card</h2>}>
             <Head title="Reprint ID Card" />
-
             <div className="py-6">
                 <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-6">
-
-                    {/* Service Warning */}
                     {serviceStatus === false && (
                         <div className="flex items-center gap-2 rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-800">
                             <AlertCircle className="h-4 w-4 shrink-0" />
                             Service cetak ID Card sedang tidak tersedia. Pastikan Python service sudah berjalan.
                         </div>
                     )}
-
-                    {/* Flash Messages */}
                     {flash?.success && (
                         <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-700">
                             <div className="flex items-center gap-2">
                                 <CheckCircle className="h-4 w-4 shrink-0" />
                                 <div className="flex-1">
                                     {flash.success}
-                                    {flash.errors && (
-                                        <span className="ml-1 text-yellow-700">({flash.errors})</span>
-                                    )}
+                                    {flash.errors && <span className="ml-1 text-yellow-700">({flash.errors})</span>}
                                 </div>
                                 {flash?.pdf_url && (
-                                    <a
-                                        href={flash.pdf_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-md text-xs font-medium hover:bg-green-700 transition-colors"
-                                    >
-                                        <Download className="h-3.5 w-3.5" />
-                                        Buka PDF
+                                    <a href={flash.pdf_url} target="_blank" rel="noopener noreferrer"
+                                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-md text-xs font-medium hover:bg-green-700 transition-colors">
+                                        <Download className="h-3.5 w-3.5" />Buka PDF
                                     </a>
                                 )}
                             </div>
@@ -456,237 +396,127 @@ export default function Reprint({ serviceStatus }) {
                     )}
                     {flash?.error && (
                         <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-                            <AlertCircle className="h-4 w-4 shrink-0" />
-                            {flash.error}
+                            <AlertCircle className="h-4 w-4 shrink-0" />{flash.error}
                         </div>
                     )}
 
-                    {/* Tabs */}
                     <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-                        <button
-                            onClick={() => setActiveTab('search')}
-                            className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === 'search'
-                                ? 'bg-white text-indigo-700 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <Search className="h-3.5 w-3.5" />
-                            Cari Karyawan
+                        <button onClick={() => setActiveTab('search')}
+                            className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === 'search' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                            <Search className="h-3.5 w-3.5" />Cari Karyawan
                         </button>
-                        <button
-                            onClick={() => setActiveTab('import')}
-                            className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === 'import'
-                                ? 'bg-white text-indigo-700 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <FileSpreadsheet className="h-3.5 w-3.5" />
-                            Import Excel
+                        <button onClick={() => setActiveTab('bulk')}
+                            className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === 'bulk' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                            <Table2 className="h-3.5 w-3.5" />Bulk Reprint
                         </button>
                     </div>
 
-                    {/* ── Tab: Search ── */}
                     {activeTab === 'search' && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Left: Search + Results */}
                             <div className="lg:col-span-2 space-y-4">
                                 <div className="bg-white shadow-sm rounded-lg p-4">
-                                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                                        Cari Karyawan
-                                    </h3>
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Cari Karyawan</h3>
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                                        <input
-                                            type="text"
-                                            value={query}
-                                            onChange={handleQueryChange}
+                                        <input type="text" value={query} onChange={handleQueryChange}
                                             placeholder="Cari nama, NIK, atau departemen..."
-                                            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        />
-                                        {isSearching && (
-                                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-500 animate-spin" />
-                                        )}
+                                            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                                        {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-500 animate-spin" />}
                                     </div>
                                 </div>
-
-                                {/* Results */}
                                 <div className="space-y-3">
                                     {searchError && (
                                         <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                                            <AlertCircle className="h-4 w-4 shrink-0" />
-                                            {searchError}
+                                            <AlertCircle className="h-4 w-4 shrink-0" />{searchError}
                                         </div>
                                     )}
-
-                                    {!isSearching && hasSearched && results.length === 0 && !searchError && (
+                                    {!isSearching && hasSearched && !results.length && !searchError && (
                                         <div className="text-center py-10 text-sm text-gray-500 bg-white rounded-lg border border-dashed border-gray-200">
                                             Tidak ada karyawan ditemukan untuk "<span className="font-medium">{query}</span>"
                                         </div>
                                     )}
-
                                     {!hasSearched && !isSearching && (
                                         <div className="text-center py-10 text-sm text-gray-400 bg-white rounded-lg border border-dashed border-gray-200">
                                             Ketik nama atau NIK karyawan untuk mulai mencari
                                         </div>
                                     )}
-
                                     {results.map((emp) => (
-                                        <EmployeeCard
-                                            key={emp.number_of_employees}
-                                            employee={emp}
-                                            inList={isInList(emp)}
-                                            onPrintNow={handlePrintNow}
-                                            onAddToList={handleAddToList}
-                                            onRemoveFromList={handleRemoveFromList}
-                                            isPrinting={isPrinting}
-                                        />
+                                        <EmployeeCard key={emp.number_of_employees} employee={emp} inList={isInList(emp)}
+                                            onPrintNow={handlePrintNow} onAddToList={handleAddToList}
+                                            onRemoveFromList={handleRemoveFromList} isPrinting={isPrinting} />
                                     ))}
                                 </div>
                             </div>
-
-                            {/* Right: Print List */}
                             <div className="lg:col-span-1">
                                 <div className="bg-white shadow-sm rounded-lg p-4 sticky top-6">
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                            <ListChecks className="h-4 w-4 text-indigo-600" />
-                                            List Cetak
+                                            <ListChecks className="h-4 w-4 text-indigo-600" />List Cetak
                                         </h3>
-                                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${printList.length >= MAX_PRINT_LIST
-                                            ? 'bg-red-100 text-red-600'
-                                            : 'bg-indigo-100 text-indigo-600'
-                                            }`}>
+                                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${printList.length >= MAX_PRINT_LIST ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'}`}>
                                             {printList.length}/{MAX_PRINT_LIST}
                                         </span>
                                     </div>
-
-                                    {printList.length === 0 ? (
+                                    {!printList.length ? (
                                         <p className="text-xs text-gray-400 text-center py-6 border border-dashed border-gray-200 rounded-md">
                                             Belum ada karyawan di list cetak
                                         </p>
                                     ) : (
                                         <ul className="space-y-2 mb-4 max-h-96 overflow-y-auto pr-1">
                                             {printList.map((emp) => (
-                                                <li
-                                                    key={emp.number_of_employees}
-                                                    className="flex items-start gap-2 p-2 bg-gray-50 rounded-md"
-                                                >
+                                                <li key={emp.number_of_employees} className="flex items-start gap-2 p-2 bg-gray-50 rounded-md">
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-xs font-medium text-gray-800 truncate">{emp.name}</p>
                                                         <p className="text-xs text-gray-500 truncate">{emp.department} · {emp.job_level}</p>
                                                         <p className="text-xs text-gray-400 font-mono">{emp.number_of_employees}</p>
                                                         <label className="flex items-center gap-1.5 mt-1 text-xs text-indigo-700 cursor-pointer select-none">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={emp.ctpat ?? false}
+                                                            <input type="checkbox" checked={emp.ctpat ?? false}
                                                                 onChange={() => handleToggleCtpat(emp)}
-                                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                                            />
+                                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                                                             C-TPAT
                                                         </label>
                                                     </div>
-                                                    <button
-                                                        onClick={() => handleRemoveFromList(emp)}
-                                                        className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors"
-                                                    >
+                                                    <button onClick={() => handleRemoveFromList(emp)}
+                                                        className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors">
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
                                                 </li>
                                             ))}
                                         </ul>
                                     )}
-
                                     {printList.length >= MAX_PRINT_LIST && (
                                         <p className="text-xs text-red-500 mb-3 flex items-center gap-1">
-                                            <AlertCircle className="h-3.5 w-3.5" />
-                                            Maksimal {MAX_PRINT_LIST} karyawan per cetak
+                                            <AlertCircle className="h-3.5 w-3.5" />Maksimal {MAX_PRINT_LIST} karyawan per cetak
                                         </p>
                                     )}
-
-                                    <button
-                                        onClick={handlePrintList}
-                                        disabled={printList.length === 0 || isPrinting || serviceStatus === false}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        {isPrinting ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                Mencetak...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Printer className="h-4 w-4" />
-                                                Cetak {printList.length > 0 ? `(${printList.length})` : ''}
-                                            </>
-                                        )}
+                                    <button onClick={handlePrintList}
+                                        disabled={!printList.length || isPrinting || serviceStatus === false}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                        {isPrinting ? (<><Loader2 className="h-4 w-4 animate-spin" />Mencetak...</>)
+                                            : (<><Printer className="h-4 w-4" />Cetak {printList.length ? `(${printList.length})` : ''}</>)}
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* ── Tab: Import Excel ── */}
-                    {activeTab === 'import' && (
-                        <div className="bg-white shadow-sm rounded-lg p-6 space-y-6">
+                    {activeTab === 'bulk' && (
+                        <div className="bg-white shadow-sm rounded-lg p-6 space-y-4">
                             <div>
-                                <h3 className="text-sm font-semibold text-gray-700 mb-1">Import Excel</h3>
+                                <h3 className="text-sm font-semibold text-gray-700 mb-1">Bulk Reprint</h3>
                                 <p className="text-xs text-gray-500">
-                                    File Excel harus memiliki kolom <strong>NIK</strong> dan <strong>Nama</strong>.
-                                    Maksimal 50 baris per import.
+                                    Masukkan NIK karyawan, lalu tekan Enter atau pindah kolom.
+                                    Sistem akan otomatis mengambil data dan foto. Maksimal {MAX_PRINT_LIST} karyawan.
                                 </p>
                             </div>
-
-                            {/* Upload zone */}
-                            {!previewData && (
-                                <div>
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept=".xlsx,.xls,.csv"
-                                        className="hidden"
-                                        onChange={handleFileChange}
-                                    />
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={isImporting || serviceStatus === false}
-                                        className="w-full flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-lg p-10 text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isImporting ? (
-                                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                                        ) : (
-                                            <UploadCloud className="h-8 w-8" />
-                                        )}
-                                        <span className="text-sm font-medium">
-                                            {isImporting ? 'Memproses file...' : 'Klik untuk pilih file Excel'}
-                                        </span>
-                                        <span className="text-xs">.xlsx, .xls, atau .csv</span>
-                                    </button>
-
-                                    {importError && (
-                                        <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                                            <AlertCircle className="h-4 w-4 shrink-0" />
-                                            {importError}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Preview table */}
-                            {previewData && (
-                                <ImportPreviewTable
-                                    previewData={previewData}
-                                    rowStates={rowStates}
-                                    onToggleCtpat={handleToggleImportCtpat}
-                                    onToggleInclude={handleToggleImportInclude}
-                                    onPrint={handlePrintImport}
-                                    isPrinting={isPrinting}
-                                    onClear={handleClearImport}
-                                />
-                            )}
+                            <BulkReprintTable rows={bulkRows} onNikChange={handleBulkNikChange} onNikBlur={handleBulkNikBlur}
+                                onToggleCtpat={handleBulkToggleCtpat} onRemoveRow={handleBulkRemoveRow}
+                                onAddRow={handleBulkAddRow} onPrint={handleBulkPrint}
+                                isPrinting={isPrinting} serviceStatus={serviceStatus} />
                         </div>
                     )}
-
                 </div>
             </div>
         </AuthenticatedLayout>
     );
 }
-

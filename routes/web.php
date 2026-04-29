@@ -86,6 +86,7 @@ Route::middleware('auth', 'verified')->group(function () {
 
     // Reprint ID Card Route
     Route::get('/re-print/search-employees', [ReprintIdCardController::class, 'searchEmployees'])->name('candidates.reprintIdCard.search');
+    Route::get('/re-print/lookup-employee', [ReprintIdCardController::class, 'lookupEmployee'])->name('candidates.reprintIdCard.lookup');
     Route::post('/re-print/import-preview', [ReprintIdCardController::class, 'importPreview'])->name('candidates.reprintIdCard.importPreview');
     Route::get('/re-print', [ReprintIdCardController::class, 'view'])->name('candidates.reprintIdCard.view');
     Route::post('/re-print', [ReprintIdCardController::class, 'store'])->name('candidates.reprintIdCard.store');

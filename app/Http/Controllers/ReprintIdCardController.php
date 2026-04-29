@@ -48,10 +48,69 @@ class ReprintIdCardController extends Controller
     }
 
     /**
+     * Lookup a single employee by NIK and resolve photo availability.
+     */
+    /**
+     * Check photo availability for a given NIK (network share + DB).
+     * Employee data is resolved by the browser directly from the external API.
+     */
+    public function lookupEmployee(Request $request): JsonResponse
+    {
+        $nik = trim($request->query('nik', ''));
+
+        if ($nik === '') {
+            return response()->json(['error' => 'NIK tidak boleh kosong.'], 422);
+        }
+
+        $hasPhoto    = false;
+        $photoSource = null;
+
+        // Resolve photo from network share
+        $networkPhoto = $this->resolvePhotoFromNetworkShare($nik);
+        if ($networkPhoto) {
+            $hasPhoto    = true;
+            $photoSource = 'network';
+        }
+
+        // Fallback photo: DB
+        if (! $hasPhoto) {
+            $candidate = Candidate::where('nik', $nik)->value('image_path');
+            if ($candidate) {
+                $hasPhoto    = true;
+                $photoSource = 'db';
+            }
+        }
+
+        return response()->json([
+            'nik'          => $nik,
+            'has_photo'    => $hasPhoto,
+            'photo_source' => $photoSource,
+        ]);
+    }
+
+    /**
      * Attempt to locate employee photo from the HRD network share.
      * If found, copy it to local storage so the ID card service can access it.
      * Returns the storage-relative path (e.g. "reprint_photos/12345.jpg") or null.
      */
+    private function normalizeDepartment(string $department): string
+    {
+        // Strip suffix after hyphen (e.g. "QIP-F" → "QIP")
+        $department = trim(explode('-', $department)[0]);
+
+        // Normalize "SEWING COMP *" → "SEWING COMP"
+        if (stripos($department, 'SEWING COMP') === 0) {
+            $department = 'SEWING COMP';
+        }
+
+        // Normalize "SEWING MEKANIK *" → "SEWING MEKANIK"
+        if (stripos($department, 'SEWING MEKANIK') === 0) {
+            $department = 'SEWING MEKANIK';
+        }
+
+        return $department;
+    }
+
     private function resolvePhotoFromNetworkShare(string $nik): ?string
     {
         $networkDir = '\\\\10.10.100.237\\hrd\\HRD DEPARTMENT\\ANDY@HR-Team\\Foto Karyawan HWI';
@@ -137,7 +196,7 @@ class ReprintIdCardController extends Controller
                         $employee = collect($apiData)->firstWhere('number_of_employees', $nik);
                         if ($employee) {
                             $name       = $employee['name']       ?? $name;
-                            $department = $employee['department'] ?? '';
+                            $department = $this->normalizeDepartment($employee['department'] ?? '');
                             $jobLevel   = $employee['job_level']  ?? '';
                         }
                     }
@@ -193,6 +252,8 @@ class ReprintIdCardController extends Controller
 
         // Resolve photo_filename and card_template from local DB for each card
         $cards = collect($validated['cards'])->map(function ($card) {
+            $card['department'] = $this->normalizeDepartment($card['department'] ?? '');
+
             $candidate = Candidate::with(['joblevel', 'department'])
                 ->where('nik', $card['employee_id'])
                 ->first();
