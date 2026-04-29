@@ -33,12 +33,34 @@ class CardTemplate extends Model
 
     public static function findForCandidate($joblevelId, $departmentId, $ctpat = null)
     {
-        return static::query()
-            ->when($ctpat !== null, fn ($q) => $q->where('ctpat', $ctpat))
-            ->where(function ($query) use ($joblevelId, $departmentId) {
-                $query->whereHas('joblevels', fn ($q) => $q->where('joblevel_id', $joblevelId))
-                    ->orWhereHas('departments', fn ($q) => $q->where('department_id', $departmentId));
-            })
-            ->first();
+        $base = static::query()
+            ->when($ctpat !== null, fn ($q) => $q->where('ctpat', $ctpat));
+
+        // Tier 1: department AND joblevel both match (paling spesifik)
+        if ($joblevelId && $departmentId) {
+            $template = (clone $base)
+                ->whereHas('joblevels', fn ($q) => $q->where('joblevel_id', $joblevelId))
+                ->whereHas('departments', fn ($q) => $q->where('department_id', $departmentId))
+                ->first();
+            if ($template) return $template;
+        }
+
+        // Tier 2: department match saja (department lebih spesifik dari joblevel)
+        if ($departmentId) {
+            $template = (clone $base)
+                ->whereHas('departments', fn ($q) => $q->where('department_id', $departmentId))
+                ->first();
+            if ($template) return $template;
+        }
+
+        // Tier 3: joblevel match saja
+        if ($joblevelId) {
+            $template = (clone $base)
+                ->whereHas('joblevels', fn ($q) => $q->where('joblevel_id', $joblevelId))
+                ->first();
+            if ($template) return $template;
+        }
+
+        return null;
     }
 }

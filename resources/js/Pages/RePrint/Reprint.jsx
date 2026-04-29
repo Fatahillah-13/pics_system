@@ -563,7 +563,7 @@ export default function Reprint({ serviceStatus }) {
                                             Belum ada karyawan di list cetak
                                         </p>
                                     ) : (
-                                        <ul className="space-y-2 mb-4">
+                                        <ul className="space-y-2 mb-4 max-h-96 overflow-y-auto pr-1">
                                             {printList.map((emp) => (
                                                 <li
                                                     key={emp.number_of_employees}

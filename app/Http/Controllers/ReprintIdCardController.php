@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Imports\ReprintPreviewImport;
 use App\Models\Candidate;
 use App\Models\CardTemplate;
+use App\Models\Department;
+use App\Models\Joblevel;
 use App\Services\IdCardPrintingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -124,7 +126,7 @@ class ReprintIdCardController extends Controller
                     $photoSource = 'network';
                 }
 
-                // Look up dept / job_level from external API
+                // Look up name, dept / job_level from external API
                 try {
                     $response = Http::timeout(5)
                         ->get('http://10.10.100.193:1002/api.employees.v1/employees', [
@@ -134,12 +136,13 @@ class ReprintIdCardController extends Controller
                         $apiData  = $response->json('data', []);
                         $employee = collect($apiData)->firstWhere('number_of_employees', $nik);
                         if ($employee) {
+                            $name       = $employee['name']       ?? $name;
                             $department = $employee['department'] ?? '';
                             $jobLevel   = $employee['job_level']  ?? '';
                         }
                     }
                 } catch (\Exception) {
-                    // API tidak tersedia, biarkan department/jobLevel kosong
+                    // API tidak tersedia, gunakan nama dari Excel
                 }
 
                 // Fallback foto: cek image_path di tabel candidates
@@ -208,7 +211,12 @@ class ReprintIdCardController extends Controller
                 ) ?? CardTemplate::first();
                 $cardTemplate = $template?->template_path ?? $cardTemplate;
             } else {
-                $template = CardTemplate::where('ctpat', (bool) $ctpatFlag)->first()
+                // Resolve IDs from department/joblevel names provided by the API
+                $joblevelId   = Joblevel::whereRaw('LOWER(name) = ?', [strtolower($card['job_level'] ?? '')])->value('id');
+                $departmentId = Department::whereRaw('LOWER(name) = ?', [strtolower($card['department'] ?? '')])->value('id');
+
+                $template = CardTemplate::findForCandidate($joblevelId, $departmentId, $ctpatFlag)
+                    ?? CardTemplate::where('ctpat', (bool) $ctpatFlag)->first()
                     ?? CardTemplate::first();
                 $cardTemplate = $template?->template_path ?? $cardTemplate;
             }
