@@ -108,6 +108,11 @@ class ReprintIdCardController extends Controller
             $department = 'SEWING MEKANIK';
         }
 
+        // Normalize "TECHNICAL ROLLING *" → "TECHNICAL ROLLING"
+        if (stripos($department, 'TECHNICAL ROLLING') === 0) {
+            $department = 'TECHNICAL ROLLING';
+        }
+
         return $department;
     }
 
