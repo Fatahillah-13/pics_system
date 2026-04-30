@@ -1,6 +1,6 @@
 ﻿import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
     Search, Printer, Plus, X, AlertCircle, CheckCircle,
     Download, Loader2, ListChecks, User, Building2, Briefcase,
@@ -25,6 +25,15 @@ function StatusBadge({ status }) {
 function BulkReprintTable({ rows, onNikChange, onNikBlur, onToggleCtpat, onRemoveRow, onAddRow, onPrint, isPrinting, serviceStatus }) {
     const validRows = rows.filter((r) => r.nik.trim() !== '' && r.name !== '' && r.name !== null);
     const includedCount = validRows.length;
+    const nikRefs = useRef([]);
+    const prevRowCount = useRef(rows.length);
+
+    useEffect(() => {
+        if (rows.length > prevRowCount.current) {
+            nikRefs.current[rows.length - 1]?.focus();
+        }
+        prevRowCount.current = rows.length;
+    }, [rows.length]);
 
     return (
         <div className="space-y-4">
@@ -77,11 +86,23 @@ function BulkReprintTable({ rows, onNikChange, onNikBlur, onToggleCtpat, onRemov
                                 <td className="px-3 py-1.5">
                                     <div className="relative">
                                         <input
+                                            ref={(el) => (nikRefs.current[idx] = el)}
                                             type="text"
                                             value={row.nik}
                                             onChange={(e) => onNikChange(row.id, e.target.value)}
                                             onBlur={() => onNikBlur(row.id)}
-                                            onKeyDown={(e) => { if (e.key === 'Enter') onNikBlur(row.id); }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    onNikBlur(row.id);
+                                                    const next = nikRefs.current[idx + 1];
+                                                    if (next) {
+                                                        next.focus();
+                                                    } else if (rows.length < MAX_PRINT_LIST) {
+                                                        onAddRow();
+                                                    }
+                                                }
+                                            }}
                                             placeholder="Ketik NIK…"
                                             className="w-full px-2 py-1 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-400"
                                         />
