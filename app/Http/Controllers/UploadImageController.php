@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Candidate;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -48,6 +49,13 @@ class UploadImageController extends Controller
 
         $candidate->update(['image_path' => $filename]);
 
+        ActivityLog::create([
+            'action' => 'update',
+            'model' => 'Candidate',
+            'model_id' => $candidate->id,
+            'description' => "Foto kandidat {$candidate->name} diperbarui",
+        ]);
+
         return back()->with('success', 'Photo uploaded successfully.');
     }
 
@@ -58,6 +66,13 @@ class UploadImageController extends Controller
         ]);
 
         $candidate->update(['photo_number' => $request->photo_number]);
+
+        ActivityLog::create([
+            'action' => 'update',
+            'model' => 'Candidate',
+            'model_id' => $candidate->id,
+            'description' => "Nomor foto kandidat {$candidate->name} diperbarui",
+        ]);
 
         return back();
     }

@@ -15,7 +15,7 @@ import {
     SidebarMenuSubButton,
 } from "@/Components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible";
-import { User, Home, DatabaseZapIcon, ImagePlus, PlusSquareIcon, IdCardIcon, UserPlus2, Users , LucideFilePlus, Settings, IdCardLanyard , LogOut, ChevronRight } from "lucide-react";
+import { User, Home, DatabaseZapIcon, ImagePlus, PlusSquareIcon, IdCardIcon, UserPlus2, Users , LucideFilePlus, Settings, HistoryIcon, IdCardLanyard , LogOut, ChevronRight } from "lucide-react";
 
 // Definisikan item menu navigasi
 const menuItems = [
@@ -38,6 +38,7 @@ const menuItems = [
         subItems: [
             { title: "Profile", url: "/profile", icon: User },
             { title: "Users Settings", url: "/settings/user-management", icon: Users },
+            { title: "Log History", url: "/settings/log-history", icon: HistoryIcon },
             { title: "ID Card Template", url: "/settings/id-card-template", icon: IdCardLanyard },
         ],
     },

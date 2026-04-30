@@ -7,6 +7,7 @@ use App\Models\Candidate;
 use App\Models\CardTemplate;
 use App\Models\Department;
 use App\Models\Joblevel;
+use App\Models\ActivityLog;
 use App\Services\IdCardPrintingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -317,6 +318,15 @@ class ReprintIdCardController extends Controller
                     'errors' => $totalErrors,
                     'pdf_url' => $pdfUrl,
                 ]);
+
+                foreach ($cards as $card) {
+                    ActivityLog::create([
+                        'action' => 'update',
+                        'model' => 'Candidate',
+                        'model_id' => null,
+                        'description' => "ID Card kandidat dengan NIK {$card['employee_id']} dicetak ulang",
+                    ]);
+                }
 
                 return back()->with([
                     'success' => "Berhasil mencetak ulang {$totalCards} ID Card.",

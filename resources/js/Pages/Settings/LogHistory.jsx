@@ -1,7 +1,63 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
+import { useState, useMemo } from 'react';
+
+const ACTION_BADGE = {
+    created:  'bg-green-100 text-green-700',
+    printed:  'bg-blue-100 text-blue-700',
+    approved: 'bg-indigo-100 text-indigo-700',
+    updated:  'bg-yellow-100 text-yellow-700',
+    deleted:  'bg-red-100 text-red-700',
+};
+
+function badgeClass(action) {
+    return ACTION_BADGE[action?.toLowerCase()] ?? 'bg-gray-100 text-gray-600';
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    });
+}
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export default function LogHistory() {
+    const { logs = [] } = usePage().props;
+
+    const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+
+    const filtered = useMemo(() => {
+        const q = search.toLowerCase();
+        if (!q) return logs;
+        return logs.filter(log =>
+            log.candidate?.name?.toLowerCase().includes(q) ||
+            log.candidate?.nik?.toLowerCase().includes(q) ||
+            log.user?.name?.toLowerCase().includes(q) ||
+            log.action?.toLowerCase().includes(q) ||
+            log.notes?.toLowerCase().includes(q)
+        );
+    }, [logs, search]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+    function handleSearch(e) {
+        setSearch(e.target.value);
+        setPage(1);
+    }
+
+    function handlePageSize(e) {
+        setPageSize(Number(e.target.value));
+        setPage(1);
+    }
+
     return (
         <AuthenticatedLayout
             header={
@@ -15,8 +71,130 @@ export default function LogHistory() {
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            Here you can view the log history of the system. This section will display all the activities and events that have occurred within the PICS System, allowing you to monitor and track any changes or actions taken by users. You can filter the logs by date, user, or type of activity to easily find specific entries. This is an essential tool for maintaining security and ensuring accountability within the system.
+                        <div className="p-6">
+                            {/* Toolbar */}
+                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={handleSearch}
+                                    placeholder="Cari kandidat, NIK, user, aksi, atau catatan…"
+                                    className="w-full sm:w-80 rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                />
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <span>Tampilkan</span>
+                                    <select
+                                        value={pageSize}
+                                        onChange={handlePageSize}
+                                        className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                    >
+                                        {PAGE_SIZE_OPTIONS.map(n => (
+                                            <option key={n} value={n}>{n}</option>
+                                        ))}
+                                    </select>
+                                    <span>baris</span>
+                                </div>
+                            </div>
+
+                            {/* Table */}
+                            <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                <table className="min-w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-3 py-2 text-left font-semibold text-gray-600 w-10">#</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-gray-600">Kandidat</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-gray-600">NIK</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-gray-600">User</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-gray-600">Aksi</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-gray-600">Catatan</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">Tanggal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 bg-white">
+                                        {paginated.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-3 py-8 text-center text-gray-400 italic">
+                                                    Tidak ada data log.
+                                                </td>
+                                            </tr>
+                                        ) : paginated.map((log, idx) => (
+                                            <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-3 py-2 text-gray-400 select-none">
+                                                    {(safePage - 1) * pageSize + idx + 1}
+                                                </td>
+                                                <td className="px-3 py-2 text-gray-800 font-medium">
+                                                    {log.candidate?.name ?? <span className="text-gray-300 italic">—</span>}
+                                                </td>
+                                                <td className="px-3 py-2 text-gray-500 font-mono text-xs">
+                                                    {log.candidate?.nik ?? <span className="text-gray-300">—</span>}
+                                                </td>
+                                                <td className="px-3 py-2 text-gray-600">
+                                                    {log.user?.name ?? <span className="text-gray-300 italic">—</span>}
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${badgeClass(log.action)}`}>
+                                                        {log.action ?? '—'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2 text-gray-500 max-w-xs truncate">
+                                                    {log.notes || <span className="text-gray-300 italic">—</span>}
+                                                </td>
+                                                <td className="px-3 py-2 text-gray-500 whitespace-nowrap text-xs">
+                                                    {formatDate(log.created_at)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Pagination */}
+                            <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-between text-sm text-gray-500">
+                                <span>
+                                    Menampilkan {filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} dari {filtered.length} entri
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setPage(1)}
+                                        disabled={safePage === 1}
+                                        className="rounded px-2 py-1 disabled:opacity-40 hover:bg-gray-100"
+                                    >«</button>
+                                    <button
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={safePage === 1}
+                                        className="rounded px-2 py-1 disabled:opacity-40 hover:bg-gray-100"
+                                    >‹</button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                        .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                                        .reduce((acc, p, i, arr) => {
+                                            if (i > 0 && p - arr[i - 1] > 1) acc.push('…');
+                                            acc.push(p);
+                                            return acc;
+                                        }, [])
+                                        .map((p, i) =>
+                                            p === '…' ? (
+                                                <span key={`ellipsis-${i}`} className="px-1">…</span>
+                                            ) : (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => setPage(p)}
+                                                    className={`rounded px-2.5 py-1 ${p === safePage ? 'bg-indigo-600 text-white font-semibold' : 'hover:bg-gray-100'}`}
+                                                >{p}</button>
+                                            )
+                                        )
+                                    }
+                                    <button
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={safePage === totalPages}
+                                        className="rounded px-2 py-1 disabled:opacity-40 hover:bg-gray-100"
+                                    >›</button>
+                                    <button
+                                        onClick={() => setPage(totalPages)}
+                                        disabled={safePage === totalPages}
+                                        className="rounded px-2 py-1 disabled:opacity-40 hover:bg-gray-100"
+                                    >»</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -6,6 +6,7 @@ use App\Imports\CandidateBulkPreviewImport;
 use App\Models\Candidate;
 use App\Models\Department;
 use App\Models\Joblevel;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -89,6 +90,13 @@ class BulkAddCandidateController extends Controller
             }
 
             $saved++;
+
+            ActivityLog::create([
+                'action' => 'create',
+                'model' => 'Candidate',
+                'model_id' => $candidate->id,
+                'description' => "Kandidat {$candidate->name} ditambahkan melalui bulk import",
+            ]);
         }
 
         return response()->json([

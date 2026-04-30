@@ -8,6 +8,7 @@ use App\Models\Candidate;
 use App\Models\Department;
 use App\Models\Joblevel;
 use Illuminate\Http\Request;
+use App\Models\ActivityLog;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -45,6 +46,13 @@ class CandidateController extends Controller
 
         Candidate::create($validated);
 
+        ActivityLog::create([
+            'action' => 'create',
+            'model' => 'Candidate',
+            'model_id' => Candidate::latest()->first()->id,
+            'description' => "Kandidat {$validated['name']} ditambahkan",
+        ]);
+
         return redirect()->back();
     }
 
@@ -76,12 +84,26 @@ class CandidateController extends Controller
 
         $candidate->update($validated);
 
+        ActivityLog::create([
+            'action' => 'update',
+            'model' => 'Candidate',
+            'model_id' => $candidate->id,
+            'description' => "Kandidat {$validated['name']} diperbarui",
+        ]);
+
         return redirect()->back();
     }
 
     public function destroy(Candidate $candidate)
     {
         $candidate->delete();
+
+        ActivityLog::create([
+            'action' => 'delete',
+            'model' => 'Candidate',
+            'model_id' => $candidate->id,
+            'description' => "Kandidat {$candidate->name} dihapus",
+        ]);
 
         return redirect()->back();
     }
@@ -99,6 +121,13 @@ class CandidateController extends Controller
                 'file' => 'Data tidak valid: ' . collect($e->failures())->map(fn($f) => "Baris {$f->row()}: {$f->errors()[0]}")->join(', '),
             ]);
         }
+
+        ActivityLog::create([
+            'action' => 'import',
+            'model' => 'Candidate',
+            'model_id' => null,
+            'description' => "Kandidat diimpor dari file {$request->file('file')->getClientOriginalName()}",
+        ]);
 
         return redirect()->back();
     }

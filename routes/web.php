@@ -12,6 +12,7 @@ use App\Http\Controllers\BulkAddCandidateController;
 use App\Http\Controllers\ReprintIdCardController;
 use App\Http\Controllers\SettingsController\UserManagementController;
 use App\Http\Controllers\SettingsController\IdCardTemplateController;
+use App\Http\Controllers\SettingsController\LogHistoryController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -93,11 +94,17 @@ Route::middleware('auth', 'verified')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    // User Settings Routes
     Route::get('/settings/user-management', [UserManagementController::class, 'view'])->name('settings.userManagement.view');
+
+    // ID Card Template Routes
     Route::get('/settings/id-card-template', [IdCardTemplateController::class, 'view'])->name('settings.idCardTemplate.view');
     Route::post('/settings/id-card-template', [IdCardTemplateController::class, 'store'])->name('settings.idCardTemplate.store');
     Route::post('/settings/id-card-template/{cardTemplate}', [IdCardTemplateController::class, 'update'])->name('settings.idCardTemplate.update');
     Route::delete('/settings/id-card-template/{cardTemplate}', [IdCardTemplateController::class, 'destroy'])->name('settings.idCardTemplate.destroy');
+
+    // Log History Route
+    Route::get('/settings/log-history', [LogHistoryController::class, 'view'])->name('settings.logHistory.view');
 });
 
 Route::middleware('auth')->group(function () {

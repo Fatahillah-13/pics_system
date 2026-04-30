@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Candidate;
 use App\Models\Department;
 use App\Models\Joblevel;
+use App\Models\ActivityLog;
 use App\Services\IdCardPrintingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -76,6 +77,15 @@ class PrintIdCardController extends Controller
                 // Update is_printed status for successfully printed candidates
                 Candidate::whereIn('id', $validated['candidate_ids'])
                     ->update(['is_printed' => true]);
+
+                foreach ($candidates as $candidate) {
+                    ActivityLog::create([
+                        'action' => 'update',
+                        'model' => 'Candidate',
+                        'model_id' => $candidate->id,
+                        'description' => "ID Card kandidat {$candidate->name} dicetak",
+                    ]);
+                }
 
                 $this->copyPhotosToNewEmployees($candidates);
 

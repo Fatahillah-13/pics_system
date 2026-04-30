@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Candidate;
 use Illuminate\Http\Request;
+use App\Models\ActivityLog;
 use Inertia\Inertia;
 
 class AddNIKCandidateController extends Controller
@@ -32,6 +33,13 @@ class AddNIKCandidateController extends Controller
         $candidate = Candidate::findOrFail($request->candidate_id);
         $candidate->update(['nik' => $request->nik]);
 
+        ActivityLog::create([
+            'action' => 'update',
+            'model' => 'Candidate',
+            'model_id' => $candidate->id,
+            'description' => "NIK kandidat {$candidate->name} diperbarui",
+        ]);
+
         return back()->with('success', 'NIK berhasil disimpan untuk ' . $candidate->name . '.');
     }
 
@@ -58,6 +66,13 @@ class AddNIKCandidateController extends Controller
 
         foreach ($request->data as $item) {
             Candidate::where('id', $item['candidate_id'])->update(['nik' => $item['nik']]);
+
+            ActivityLog::create([
+                'action' => 'update',
+                'model' => 'Candidate',
+                'model_id' => $item['candidate_id'],
+                'description' => "NIK kandidat dengan ID {$item['candidate_id']} diperbarui",
+            ]);
         }
 
         return back()->with('success', count($request->data) . ' NIK berhasil disimpan.');
