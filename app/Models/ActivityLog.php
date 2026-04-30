@@ -12,6 +12,7 @@ class ActivityLog extends Model
 
     protected $fillable = [
         'candidate_id',
+        'nik',
         'user_id',
         'action',
         'notes',

@@ -37,7 +37,6 @@ export default function LogHistory() {
         if (!q) return logs;
         return logs.filter(log =>
             log.candidate?.name?.toLowerCase().includes(q) ||
-            log.candidate?.nik?.toLowerCase().includes(q) ||
             log.user?.name?.toLowerCase().includes(q) ||
             log.action?.toLowerCase().includes(q) ||
             log.notes?.toLowerCase().includes(q)
@@ -102,8 +101,6 @@ export default function LogHistory() {
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-3 py-2 text-left font-semibold text-gray-600 w-10">#</th>
-                                            <th className="px-3 py-2 text-left font-semibold text-gray-600">Kandidat</th>
-                                            <th className="px-3 py-2 text-left font-semibold text-gray-600">NIK</th>
                                             <th className="px-3 py-2 text-left font-semibold text-gray-600">User</th>
                                             <th className="px-3 py-2 text-left font-semibold text-gray-600">Aksi</th>
                                             <th className="px-3 py-2 text-left font-semibold text-gray-600">Catatan</th>
@@ -121,12 +118,6 @@ export default function LogHistory() {
                                             <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-3 py-2 text-gray-400 select-none">
                                                     {(safePage - 1) * pageSize + idx + 1}
-                                                </td>
-                                                <td className="px-3 py-2 text-gray-800 font-medium">
-                                                    {log.candidate?.name ?? <span className="text-gray-300 italic">—</span>}
-                                                </td>
-                                                <td className="px-3 py-2 text-gray-500 font-mono text-xs">
-                                                    {log.candidate?.nik ?? <span className="text-gray-300">—</span>}
                                                 </td>
                                                 <td className="px-3 py-2 text-gray-600">
                                                     {log.user?.name ?? <span className="text-gray-300 italic">—</span>}

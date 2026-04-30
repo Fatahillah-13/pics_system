@@ -80,10 +80,11 @@ class PrintIdCardController extends Controller
 
                 foreach ($candidates as $candidate) {
                     ActivityLog::create([
-                        'action' => 'update',
-                        'model' => 'Candidate',
-                        'model_id' => $candidate->id,
-                        'description' => "ID Card kandidat {$candidate->name} dicetak",
+                        'candidate_id' => $candidate->id,
+                        'nik'          => $candidate->nik,
+                        'user_id'      => auth()->id(),
+                        'action'       => 'print',
+                        'notes'        => "ID Card kandidat {$candidate->name} dicetak",
                     ]);
                 }
 

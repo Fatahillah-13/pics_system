@@ -34,10 +34,11 @@ class AddNIKCandidateController extends Controller
         $candidate->update(['nik' => $request->nik]);
 
         ActivityLog::create([
-            'action' => 'update',
-            'model' => 'Candidate',
-            'model_id' => $candidate->id,
-            'description' => "NIK kandidat {$candidate->name} diperbarui",
+            'candidate_id' => $candidate->id,
+            'nik'          => $candidate->nik,
+            'user_id'      => auth()->id(),
+            'action'       => 'update',
+            'notes'        => "NIK kandidat {$candidate->name} diperbarui menjadi {$request->nik}",
         ]);
 
         return back()->with('success', 'NIK berhasil disimpan untuk ' . $candidate->name . '.');
@@ -68,10 +69,11 @@ class AddNIKCandidateController extends Controller
             Candidate::where('id', $item['candidate_id'])->update(['nik' => $item['nik']]);
 
             ActivityLog::create([
-                'action' => 'update',
-                'model' => 'Candidate',
-                'model_id' => $item['candidate_id'],
-                'description' => "NIK kandidat dengan ID {$item['candidate_id']} diperbarui",
+                'candidate_id' => $item['candidate_id'],
+                'nik'          => $item['nik'],
+                'user_id'      => auth()->id(),
+                'action'       => 'update',
+                'notes'        => "NIK kandidat dengan ID {$item['candidate_id']} diperbarui menjadi {$item['nik']}",
             ]);
         }
 

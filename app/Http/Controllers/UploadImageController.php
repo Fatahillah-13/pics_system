@@ -50,10 +50,11 @@ class UploadImageController extends Controller
         $candidate->update(['image_path' => $filename]);
 
         ActivityLog::create([
-            'action' => 'update',
-            'model' => 'Candidate',
-            'model_id' => $candidate->id,
-            'description' => "Foto kandidat {$candidate->name} diperbarui",
+            'candidate_id' => $candidate->id,
+            'nik'          => $candidate->nik,
+            'user_id'      => auth()->id(),
+            'action'       => 'update',
+            'notes'        => "Foto kandidat {$candidate->name} diperbarui",
         ]);
 
         return back()->with('success', 'Photo uploaded successfully.');
@@ -68,10 +69,11 @@ class UploadImageController extends Controller
         $candidate->update(['photo_number' => $request->photo_number]);
 
         ActivityLog::create([
-            'action' => 'update',
-            'model' => 'Candidate',
-            'model_id' => $candidate->id,
-            'description' => "Nomor foto kandidat {$candidate->name} diperbarui",
+            'candidate_id' => $candidate->id,
+            'nik'          => $candidate->nik,
+            'user_id'      => auth()->id(),
+            'action'       => 'update',
+            'notes'        => "Nomor foto kandidat {$candidate->name} diperbarui menjadi {$request->photo_number}",
         ]);
 
         return back();

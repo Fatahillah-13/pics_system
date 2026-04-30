@@ -320,11 +320,13 @@ class ReprintIdCardController extends Controller
                 ]);
 
                 foreach ($cards as $card) {
+                    $candidate = Candidate::where('nik', $card['employee_id'])->first();
                     ActivityLog::create([
-                        'action' => 'update',
-                        'model' => 'Candidate',
-                        'model_id' => null,
-                        'description' => "ID Card kandidat dengan NIK {$card['employee_id']} dicetak ulang",
+                        'candidate_id' => $candidate?->id,
+                        'nik'          => $card['employee_id'],
+                        'user_id'      => auth()->id(),
+                        'action'       => 'reprint',
+                        'notes'        => "ID Card untuk {$card['name']} (NIK: {$card['employee_id']}) dicetak ulang",
                     ]);
                 }
 
