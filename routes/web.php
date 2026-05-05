@@ -59,62 +59,62 @@ Route::get('/dashboard', function () {
 Route::middleware('auth', 'verified')->group(function () {
 
     // Candidate Routes
-    Route::get('/candidates', [CandidateController::class, 'index'])->name('candidates.index');
-    Route::post('/candidates', [CandidateController::class, 'store'])->name('candidates.store');
-    Route::get('/candidates/{candidate}/edit', [CandidateController::class, 'edit'])->name('candidates.edit');
-    Route::put('/candidates/{candidate}', [CandidateController::class, 'update'])->name('candidates.update');
-    Route::delete('/candidates/{candidate}', [CandidateController::class, 'destroy'])->name('candidates.destroy');
-    Route::post('/candidates/import', [CandidateController::class, 'import'])->name('candidates.import');
+    Route::get('/candidates', [CandidateController::class, 'index'])->middleware('permission:view candidates')->name('candidates.index');
+    Route::post('/candidates', [CandidateController::class, 'store'])->middleware('permission:create candidates')->name('candidates.store');
+    Route::get('/candidates/{candidate}/edit', [CandidateController::class, 'edit'])->middleware('permission:edit candidates')->name('candidates.edit');
+    Route::put('/candidates/{candidate}', [CandidateController::class, 'update'])->middleware('permission:edit candidates')->name('candidates.update');
+    Route::delete('/candidates/{candidate}', [CandidateController::class, 'destroy'])->middleware('permission:delete candidates')->name('candidates.destroy');
+    Route::post('/candidates/import', [CandidateController::class, 'import'])->middleware('permission:import candidates')->name('candidates.import');
     Route::get('/candidates/template', [CandidateController::class, 'downloadTemplate'])->name('candidates.template');
 
     // Upload Image Route
-    Route::get('/candidates/upload-image', [UploadImageController::class, 'view'])->name('candidates.uploadImage.view');
-    Route::post('/candidates/upload-image', [UploadImageController::class, 'store'])->name('candidates.uploadImage.store');
-    Route::patch('/candidates/{candidate}/photo-number', [UploadImageController::class, 'updatePhotoNumber'])->name('candidates.updatePhotoNumber');
+    Route::get('/candidates/upload-image', [UploadImageController::class, 'view'])->middleware('permission:upload image')->name('candidates.uploadImage.view');
+    Route::post('/candidates/upload-image', [UploadImageController::class, 'store'])->middleware('permission:upload image')->name('candidates.uploadImage.store');
+    Route::patch('/candidates/{candidate}/photo-number', [UploadImageController::class, 'updatePhotoNumber'])->middleware('permission:upload image')->name('candidates.updatePhotoNumber');
 
     // Add NIK Route
-    Route::get('/candidates/upload-nik', [AddNIKCandidateController::class, 'view'])->name('candidates.uploadNik.view');
-    Route::post('/candidates/upload-nik', [AddNIKCandidateController::class, 'store'])->name('candidates.uploadNik.store');
-    Route::post('/candidates/upload-nik/many', [AddNIKCandidateController::class, 'storeMany'])->name('candidates.uploadNik.storeMany');
+    Route::get('/candidates/upload-nik', [AddNIKCandidateController::class, 'view'])->middleware('permission:upload nik')->name('candidates.uploadNik.view');
+    Route::post('/candidates/upload-nik', [AddNIKCandidateController::class, 'store'])->middleware('permission:upload nik')->name('candidates.uploadNik.store');
+    Route::post('/candidates/upload-nik/many', [AddNIKCandidateController::class, 'storeMany'])->middleware('permission:upload nik')->name('candidates.uploadNik.storeMany');
 
     // Print ID Card Route
-    Route::get('/candidates/print-id-card', [PrintIdCardController::class, 'view'])->name('candidates.printIdCard.view');
-    Route::post('/candidates/print-id-card', [PrintIdCardController::class, 'store'])->name('candidates.printIdCard.store');
+    Route::get('/candidates/print-id-card', [PrintIdCardController::class, 'view'])->middleware('permission:print id cards')->name('candidates.printIdCard.view');
+    Route::post('/candidates/print-id-card', [PrintIdCardController::class, 'store'])->middleware('permission:print id cards')->name('candidates.printIdCard.store');
 
     // Bulk Add Candidate Route
-    Route::get('/candidates/bulk-add', [BulkAddCandidateController::class, 'view'])->name('candidates.bulkAdd.view');
-    Route::post('/candidates/bulk-add/preview', [BulkAddCandidateController::class, 'preview'])->name('candidates.bulkAdd.preview');
-    Route::post('/candidates/bulk-add', [BulkAddCandidateController::class, 'store'])->name('candidates.bulkAdd.store');
+    Route::get('/candidates/bulk-add', [BulkAddCandidateController::class, 'view'])->middleware('permission:bulk add candidates')->name('candidates.bulkAdd.view');
+    Route::post('/candidates/bulk-add/preview', [BulkAddCandidateController::class, 'preview'])->middleware('permission:bulk add candidates')->name('candidates.bulkAdd.preview');
+    Route::post('/candidates/bulk-add', [BulkAddCandidateController::class, 'store'])->middleware('permission:bulk add candidates')->name('candidates.bulkAdd.store');
 
     // Reprint ID Card Route
-    Route::get('/re-print/search-employees', [ReprintIdCardController::class, 'searchEmployees'])->name('candidates.reprintIdCard.search');
-    Route::get('/re-print/lookup-employee', [ReprintIdCardController::class, 'lookupEmployee'])->name('candidates.reprintIdCard.lookup');
-    Route::post('/re-print/import-preview', [ReprintIdCardController::class, 'importPreview'])->name('candidates.reprintIdCard.importPreview');
-    Route::get('/re-print', [ReprintIdCardController::class, 'view'])->name('candidates.reprintIdCard.view');
-    Route::post('/re-print', [ReprintIdCardController::class, 'store'])->name('candidates.reprintIdCard.store');
+    Route::get('/re-print/search-employees', [ReprintIdCardController::class, 'searchEmployees'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.search');
+    Route::get('/re-print/lookup-employee', [ReprintIdCardController::class, 'lookupEmployee'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.lookup');
+    Route::post('/re-print/import-preview', [ReprintIdCardController::class, 'importPreview'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.importPreview');
+    Route::get('/re-print', [ReprintIdCardController::class, 'view'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.view');
+    Route::post('/re-print', [ReprintIdCardController::class, 'store'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.store');
 });
 
 Route::middleware('auth')->group(function () {
     // User Management Routes
-    Route::get('/settings/user-management', [UserManagementController::class, 'view'])->name('settings.userManagement.view');
-    Route::post('/settings/user-management', [UserManagementController::class, 'store'])->name('settings.userManagement.store');
-    Route::put('/settings/user-management/{user}', [UserManagementController::class, 'update'])->name('settings.userManagement.update');
-    Route::delete('/settings/user-management/{user}', [UserManagementController::class, 'destroy'])->name('settings.userManagement.destroy');
+    Route::get('/settings/user-management', [UserManagementController::class, 'view'])->middleware('permission:manage users')->name('settings.userManagement.view');
+    Route::post('/settings/user-management', [UserManagementController::class, 'store'])->middleware('permission:manage users')->name('settings.userManagement.store');
+    Route::put('/settings/user-management/{user}', [UserManagementController::class, 'update'])->middleware('permission:manage users')->name('settings.userManagement.update');
+    Route::delete('/settings/user-management/{user}', [UserManagementController::class, 'destroy'])->middleware('permission:manage users')->name('settings.userManagement.destroy');
 
     // Role Management Routes
-    Route::get('/settings/role-management', [RoleManagementController::class, 'view'])->name('settings.roleManagement.view');
-    Route::post('/settings/role-management', [RoleManagementController::class, 'store'])->name('settings.roleManagement.store');
-    Route::put('/settings/role-management/{role}', [RoleManagementController::class, 'update'])->name('settings.roleManagement.update');
-    Route::delete('/settings/role-management/{role}', [RoleManagementController::class, 'destroy'])->name('settings.roleManagement.destroy');
+    Route::get('/settings/role-management', [RoleManagementController::class, 'view'])->middleware('permission:manage roles')->name('settings.roleManagement.view');
+    Route::post('/settings/role-management', [RoleManagementController::class, 'store'])->middleware('permission:manage roles')->name('settings.roleManagement.store');
+    Route::put('/settings/role-management/{role}', [RoleManagementController::class, 'update'])->middleware('permission:manage roles')->name('settings.roleManagement.update');
+    Route::delete('/settings/role-management/{role}', [RoleManagementController::class, 'destroy'])->middleware('permission:manage roles')->name('settings.roleManagement.destroy');
 
     // ID Card Template Routes
-    Route::get('/settings/id-card-template', [IdCardTemplateController::class, 'view'])->name('settings.idCardTemplate.view');
-    Route::post('/settings/id-card-template', [IdCardTemplateController::class, 'store'])->name('settings.idCardTemplate.store');
-    Route::post('/settings/id-card-template/{cardTemplate}', [IdCardTemplateController::class, 'update'])->name('settings.idCardTemplate.update');
-    Route::delete('/settings/id-card-template/{cardTemplate}', [IdCardTemplateController::class, 'destroy'])->name('settings.idCardTemplate.destroy');
+    Route::get('/settings/id-card-template', [IdCardTemplateController::class, 'view'])->middleware('permission:manage id card templates')->name('settings.idCardTemplate.view');
+    Route::post('/settings/id-card-template', [IdCardTemplateController::class, 'store'])->middleware('permission:manage id card templates')->name('settings.idCardTemplate.store');
+    Route::post('/settings/id-card-template/{cardTemplate}', [IdCardTemplateController::class, 'update'])->middleware('permission:manage id card templates')->name('settings.idCardTemplate.update');
+    Route::delete('/settings/id-card-template/{cardTemplate}', [IdCardTemplateController::class, 'destroy'])->middleware('permission:manage id card templates')->name('settings.idCardTemplate.destroy');
 
     // Log History Route
-    Route::get('/settings/log-history', [LogHistoryController::class, 'view'])->name('settings.logHistory.view');
+    Route::get('/settings/log-history', [LogHistoryController::class, 'view'])->middleware('permission:view logs')->name('settings.logHistory.view');
 });
 
 Route::middleware('auth')->group(function () {
