@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, StopCircle, RotateCcw, Save, User, Search, RefreshCw, RotateCw } from 'lucide-react';
+import { Camera, StopCircle, RotateCcw, Save, User, Search, RefreshCw, RotateCw, Upload } from 'lucide-react';
 
 export default function UploadImage({ candidates }) {
     const { flash } = usePage().props;
@@ -17,12 +17,15 @@ export default function UploadImage({ candidates }) {
     const [savingPhotoNumber, setSavingPhotoNumber] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [rotation, setRotation] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isUploadedImage, setIsUploadedImage] = useState(false);
     const ITEMS_PER_PAGE = 5;
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
     const editInputRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const filteredCandidates = candidates
         .filter((c) =>
@@ -129,11 +132,58 @@ export default function UploadImage({ candidates }) {
     const retakePhoto = useCallback(() => {
         setCapturedImage(null);
         setRotation(0);
-        startCamera();
-    }, [startCamera]);
+        if (isUploadedImage) {
+            setIsUploadedImage(false);
+            // don't start camera — let user choose again
+        } else {
+            setIsUploadedImage(false);
+            startCamera();
+        }
+    }, [isUploadedImage, startCamera]);
 
     const rotatePhoto = useCallback(() => {
         setRotation((prev) => (prev + 90) % 360);
+    }, []);
+
+    const handleDragOver = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only clear if leaving the drop zone entirely (not entering a child)
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+        setIsDragging(false);
+    }, []);
+
+    const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setCapturedImage(ev.target.result);
+            setIsUploadedImage(true);
+            if (isCameraOn) stopCamera();
+        };
+        reader.readAsDataURL(file);
+    }, [isCameraOn, stopCamera]);
+
+    const handleFileSelect = useCallback((e) => {
+        const file = e.target.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setCapturedImage(ev.target.result);
+            setIsUploadedImage(true);
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
     }, []);
 
     const switchCamera = useCallback(() => {
@@ -159,6 +209,7 @@ export default function UploadImage({ candidates }) {
                 onSuccess: () => {
                     setCapturedImage(null);
                     setRotation(0);
+                    setIsUploadedImage(false);
                     setSelectedCandidate(null);
                     setSaving(false);
                 },
@@ -412,8 +463,11 @@ export default function UploadImage({ candidates }) {
                                     <div className="flex flex-col items-center">
                                         {/* Camera / Preview Area */}
                                         <div
-                                            className="relative bg-black rounded-lg overflow-hidden mb-4 w-full mx-auto"
+                                            className={`relative bg-black rounded-lg overflow-hidden mb-4 w-full mx-auto transition-colors ${isDragging ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
                                             style={{ maxWidth: '320px', aspectRatio: '3/4' }}
+                                            onDragOver={handleDragOver}
+                                            onDragLeave={handleDragLeave}
+                                            onDrop={handleDrop}
                                         >
                                             {/* Camera Video */}
                                             <video
@@ -435,15 +489,19 @@ export default function UploadImage({ candidates }) {
                                                     src={capturedImage}
                                                     alt="Captured"
                                                     className="w-full h-full object-cover"
-                                                    style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : undefined }}
+                                                    style={{ transform: (!isUploadedImage && facingMode === 'user') ? 'scaleX(-1)' : undefined }}
                                                 />
                                             )}
 
                                             {/* Placeholder when camera is off */}
                                             {!isCameraOn && !capturedImage && (
-                                                <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
-                                                    <Camera className="h-12 w-12 mb-2 text-gray-400" />
-                                                    <p className="text-sm">Klik tombol di bawah untuk menyalakan kamera</p>
+                                                <div
+                                                    className={`w-full h-full flex flex-col items-center justify-center text-gray-500 cursor-pointer transition-colors ${isDragging ? 'bg-indigo-900/20' : ''}`}
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                >
+                                                    <Upload className="h-12 w-12 mb-2 text-gray-400" />
+                                                    <p className="text-sm text-center px-4">Drag & drop gambar di sini</p>
+                                                    <p className="text-xs text-gray-400 mt-1">atau klik untuk pilih file</p>
                                                 </div>
                                             )}
                                         </div>
@@ -451,16 +509,33 @@ export default function UploadImage({ candidates }) {
                                         {/* Canvas for capture (hidden) */}
                                         <canvas ref={canvasRef} className="hidden" />
 
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleFileSelect}
+                                        />
+
                                         {/* Action Buttons */}
                                         <div className="flex gap-3 mt-2">
                                             {!isCameraOn && !capturedImage && (
-                                                <button
-                                                    onClick={startCamera}
-                                                    className="inline-flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-                                                >
-                                                    <Camera className="h-4 w-4" />
-                                                    Nyalakan Kamera
-                                                </button>
+                                                <>
+                                                    <button
+                                                        onClick={startCamera}
+                                                        className="inline-flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                                                    >
+                                                        <Camera className="h-4 w-4" />
+                                                        Nyalakan Kamera
+                                                    </button>
+                                                    <button
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="inline-flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors border border-gray-300"
+                                                    >
+                                                        <Upload className="h-4 w-4" />
+                                                        Pilih File
+                                                    </button>
+                                                </>
                                             )}
 
                                             {isCameraOn && !capturedImage && (
