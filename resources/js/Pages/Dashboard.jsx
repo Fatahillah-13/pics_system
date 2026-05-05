@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     Users, Printer, CheckCircle2, ImageOff, CreditCard,
@@ -83,14 +83,19 @@ export default function Dashboard({ stats, upcoming }) {
         { label: 'Belum Ada NIK',   value: stats.belumNik,   icon: CreditCard,    bg: 'bg-orange-50',  iconColor: 'text-orange-500', valueColor: 'text-orange-600' },
     ];
 
-    const actions = [
-        { href: '/candidates',              icon: UserPlus2,    label: 'Tambah Kandidat',   description: 'Input data karyawan baru',          border: 'border-indigo-200', iconBg: 'bg-indigo-50',  iconColor: 'text-indigo-600' },
-        { href: '/candidates/upload-image', icon: ImagePlus,    label: 'Upload Foto',        description: 'Upload foto kandidat',              border: 'border-purple-200', iconBg: 'bg-purple-50',  iconColor: 'text-purple-600' },
-        { href: '/candidates/upload-nik',   icon: BadgeCheck,   label: 'Input NIK',          description: 'Tambahkan NIK ke kandidat',         border: 'border-amber-200',  iconBg: 'bg-amber-50',   iconColor: 'text-amber-600' },
-        { href: '/candidates/print-id-card',icon: Printer,      label: 'Cetak ID Card',      description: 'Cetak kartu tanda karyawan',        border: 'border-green-200',  iconBg: 'bg-green-50',   iconColor: 'text-green-600' },
-        { href: '/re-print',                icon: RotateCcw,    label: 'Cetak Ulang',        description: 'Cetak ulang ID card yang rusak',    border: 'border-rose-200',   iconBg: 'bg-rose-50',    iconColor: 'text-rose-500' },
-        { href: '/candidates/bulk-add',     icon: DatabaseZap,  label: 'Bulk Add Kandidat',  description: 'Import banyak kandidat sekaligus',  border: 'border-teal-200',   iconBg: 'bg-teal-50',    iconColor: 'text-teal-600' },
+    const { props } = usePage();
+    const userPermissions = props.auth?.user?.permissions ?? [];
+    const can = (perm) => !perm || userPermissions.includes(perm);
+
+    const allActions = [
+        { href: '/candidates',              icon: UserPlus2,    label: 'Tambah Kandidat',   description: 'Input data karyawan baru',          border: 'border-indigo-200', iconBg: 'bg-indigo-50',  iconColor: 'text-indigo-600', permission: 'view candidates' },
+        { href: '/candidates/upload-image', icon: ImagePlus,    label: 'Upload Foto',        description: 'Upload foto kandidat',              border: 'border-purple-200', iconBg: 'bg-purple-50',  iconColor: 'text-purple-600', permission: 'upload image' },
+        { href: '/candidates/upload-nik',   icon: BadgeCheck,   label: 'Input NIK',          description: 'Tambahkan NIK ke kandidat',         border: 'border-amber-200',  iconBg: 'bg-amber-50',   iconColor: 'text-amber-600', permission: 'upload nik' },
+        { href: '/candidates/print-id-card',icon: Printer,      label: 'Cetak ID Card',      description: 'Cetak kartu tanda karyawan',        border: 'border-green-200',  iconBg: 'bg-green-50',   iconColor: 'text-green-600', permission: 'print id cards' },
+        { href: '/re-print',                icon: RotateCcw,    label: 'Cetak Ulang',        description: 'Cetak ulang ID card yang rusak',    border: 'border-rose-200',   iconBg: 'bg-rose-50',    iconColor: 'text-rose-500', permission: 'reprint id cards' },
+        { href: '/candidates/bulk-add',     icon: DatabaseZap,  label: 'Bulk Add Kandidat',  description: 'Import banyak kandidat sekaligus',  border: 'border-teal-200',   iconBg: 'bg-teal-50',    iconColor: 'text-teal-600', permission: 'bulk add candidates' },
     ];
+    const actions = allActions.filter((a) => can(a.permission));
 
     const pipeline = [
         { label: 'Data Masuk',    count: stats.total,      circle: 'bg-indigo-500', bar: 'bg-indigo-400' },

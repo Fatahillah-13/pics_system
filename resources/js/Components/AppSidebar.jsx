@@ -27,7 +27,7 @@ const menuItems = [
         icon: LucideFilePlus,
         subItems: [
             { title: "Tambah Kandidat", url: "/candidates", icon: UserPlus2, permission: 'view candidates' },
-            { title: "Upload Gambar", url: "/candidates/upload-image", icon: ImagePlus, permission: 'upload images' },
+            { title: "Upload Gambar", url: "/candidates/upload-image", icon: ImagePlus, permission: 'upload image' },
             { title: "Tambah NIK", url: "/candidates/upload-nik", icon: PlusSquareIcon, permission: 'upload nik' },
             { title: "Cetak ID Card", url: "/candidates/print-id-card", icon: IdCardIcon, permission: 'print id cards' },
         ],
