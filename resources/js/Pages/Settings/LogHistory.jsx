@@ -31,17 +31,28 @@ export default function LogHistory() {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        if (!q) return logs;
-        return logs.filter(log =>
-            log.candidate?.name?.toLowerCase().includes(q) ||
-            log.user?.name?.toLowerCase().includes(q) ||
-            log.action?.toLowerCase().includes(q) ||
-            log.notes?.toLowerCase().includes(q)
-        );
-    }, [logs, search]);
+        const from = dateFrom ? new Date(dateFrom) : null;
+        const to = dateTo ? new Date(dateTo + 'T23:59:59') : null;
+        return logs.filter(log => {
+            if (q && !(
+                log.candidate?.name?.toLowerCase().includes(q) ||
+                log.user?.name?.toLowerCase().includes(q) ||
+                log.action?.toLowerCase().includes(q) ||
+                log.notes?.toLowerCase().includes(q)
+            )) return false;
+            if (log.created_at) {
+                const d = new Date(log.created_at);
+                if (from && d < from) return false;
+                if (to && d > to) return false;
+            }
+            return true;
+        });
+    }, [logs, search, dateFrom, dateTo]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const safePage = Math.min(page, totalPages);
@@ -54,6 +65,16 @@ export default function LogHistory() {
 
     function handlePageSize(e) {
         setPageSize(Number(e.target.value));
+        setPage(1);
+    }
+
+    function handleDateFrom(e) {
+        setDateFrom(e.target.value);
+        setPage(1);
+    }
+
+    function handleDateTo(e) {
+        setDateTo(e.target.value);
         setPage(1);
     }
 
@@ -72,15 +93,16 @@ export default function LogHistory() {
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div className="p-6">
                             {/* Toolbar */}
-                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={handleSearch}
-                                    placeholder="Cari kandidat, NIK, user, aksi, atau catatan…"
-                                    className="w-full sm:w-80 rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                                />
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <div className="mb-4 flex flex-col gap-3">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <input
+                                        type="text"
+                                        value={search}
+                                        onChange={handleSearch}
+                                        placeholder="Cari kandidat, NIK, user, aksi, atau catatan…"
+                                        className="w-full sm:w-80 rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                    />
+                                    <div className="flex items-center gap-2 text-sm text-gray-500">
                                     <span>Tampilkan</span>
                                     <select
                                         value={pageSize}
@@ -92,6 +114,30 @@ export default function LogHistory() {
                                         ))}
                                     </select>
                                     <span>baris</span>
+                                </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                                    <span>Tanggal:</span>
+                                    <input
+                                        type="date"
+                                        value={dateFrom}
+                                        onChange={handleDateFrom}
+                                        className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                    />
+                                    <span>s/d</span>
+                                    <input
+                                        type="date"
+                                        value={dateTo}
+                                        onChange={handleDateTo}
+                                        min={dateFrom || undefined}
+                                        className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                    />
+                                    {(dateFrom || dateTo) && (
+                                        <button
+                                            onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+                                            className="rounded px-2 py-1 text-xs text-red-500 hover:bg-red-50 border border-red-200"
+                                        >Reset</button>
+                                    )}
                                 </div>
                             </div>
 
