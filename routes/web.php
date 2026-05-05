@@ -11,6 +11,7 @@ use App\Http\Controllers\PrintIdCardController;
 use App\Http\Controllers\BulkAddCandidateController;
 use App\Http\Controllers\ReprintIdCardController;
 use App\Http\Controllers\SettingsController\UserManagementController;
+use App\Http\Controllers\SettingsController\RoleManagementController;
 use App\Http\Controllers\SettingsController\IdCardTemplateController;
 use App\Http\Controllers\SettingsController\LogHistoryController;
 
@@ -94,8 +95,17 @@ Route::middleware('auth', 'verified')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    // User Settings Routes
+    // User Management Routes
     Route::get('/settings/user-management', [UserManagementController::class, 'view'])->name('settings.userManagement.view');
+    Route::post('/settings/user-management', [UserManagementController::class, 'store'])->name('settings.userManagement.store');
+    Route::put('/settings/user-management/{user}', [UserManagementController::class, 'update'])->name('settings.userManagement.update');
+    Route::delete('/settings/user-management/{user}', [UserManagementController::class, 'destroy'])->name('settings.userManagement.destroy');
+
+    // Role Management Routes
+    Route::get('/settings/role-management', [RoleManagementController::class, 'view'])->name('settings.roleManagement.view');
+    Route::post('/settings/role-management', [RoleManagementController::class, 'store'])->name('settings.roleManagement.store');
+    Route::put('/settings/role-management/{role}', [RoleManagementController::class, 'update'])->name('settings.roleManagement.update');
+    Route::delete('/settings/role-management/{role}', [RoleManagementController::class, 'destroy'])->name('settings.roleManagement.destroy');
 
     // ID Card Template Routes
     Route::get('/settings/id-card-template', [IdCardTemplateController::class, 'view'])->name('settings.idCardTemplate.view');
