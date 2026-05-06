@@ -119,6 +119,11 @@ class ReprintIdCardController extends Controller
             $department = 'FINISH GOOD';
         }
 
+        // Normalize "ASSEMBLY *" → "ASSEMBLY"
+        if (stripos($department, 'ASSEMBLY') === 0) {
+            $department = 'ASSEMBLY';
+        }
+
         return $department;
     }
 
