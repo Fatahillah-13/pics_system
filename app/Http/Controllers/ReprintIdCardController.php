@@ -114,6 +114,11 @@ class ReprintIdCardController extends Controller
             $department = 'TECHNICAL ROLLING';
         }
 
+        // Normalize "FINISH GOOD *" → "FINISH GOOD"
+        if (stripos($department, 'FINISH GOOD') === 0) {
+            $department = 'FINISH GOOD';
+        }
+
         return $department;
     }
 
