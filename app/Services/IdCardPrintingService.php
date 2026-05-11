@@ -107,7 +107,7 @@ class IdCardPrintingService
 
             return [
                 'name' => $this->formatName($candidate->name),
-                'department' => $candidate->department->name ?? 'N/A',
+                'department' => $this->normalizeDepartment($candidate->department->name ?? 'N/A'),
                 'job_level' => $candidate->joblevel->name ?? 'N/A',
                 'employee_id' => $candidate->nik ?? 'N/A',
                 'photo_filename' => $candidate->image_path,
@@ -124,6 +124,19 @@ class IdCardPrintingService
             'photo_filename' => $candidate['photo_filename'] ?? '',
             'card_template' => $candidate['card_template'] ?? '',
         ];
+    }
+
+    protected function normalizeDepartment(string $department): string
+    {
+        $department = trim(explode('-', $department)[0]);
+
+        if (stripos($department, 'SEWING COMP') === 0)       $department = 'SEWING COMP';
+        if (stripos($department, 'SEWING MEKANIK') === 0)    $department = 'SEWING MEKANIK';
+        if (stripos($department, 'TECHNICAL ROLLING') === 0) $department = 'TECHNICAL ROLLING';
+        if (stripos($department, 'FINISH GOOD') === 0)       $department = 'FINISH GOOD';
+        if (stripos($department, 'ASSEMBLY') === 0)          $department = 'ASSEMBLY';
+
+        return $department;
     }
 
     /**
