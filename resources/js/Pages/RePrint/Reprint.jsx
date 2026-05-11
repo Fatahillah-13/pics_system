@@ -22,11 +22,12 @@ function StatusBadge({ status }) {
 }
 
 /* ─── Bulk Reprint inline table ─── */
-function BulkReprintTable({ rows, onNikChange, onNikBlur, onToggleCtpat, onRemoveRow, onAddRow, onPrint, isPrinting, serviceStatus }) {
+function BulkReprintTable({ rows, onNikChange, onNikBlur, onToggleCtpat, onRemoveRow, onAddRow, onPrint, onClearAll, isPrinting, serviceStatus }) {
     const validRows = rows.filter((r) => r.nik.trim() !== '' && r.name !== '' && r.name !== null);
     const includedCount = validRows.length;
     const nikRefs = useRef([]);
     const prevRowCount = useRef(rows.length);
+    const [showClear, setShowClear] = useState(false);
 
     useEffect(() => {
         if (rows.length > prevRowCount.current) {
@@ -34,6 +35,16 @@ function BulkReprintTable({ rows, onNikChange, onNikBlur, onToggleCtpat, onRemov
         }
         prevRowCount.current = rows.length;
     }, [rows.length]);
+
+    const handlePrint = () => {
+        setShowClear(true);
+        onPrint();
+    };
+
+    const handleClearAll = () => {
+        setShowClear(false);
+        onClearAll();
+    };
 
     return (
         <div className="space-y-4">
@@ -52,7 +63,7 @@ function BulkReprintTable({ rows, onNikChange, onNikBlur, onToggleCtpat, onRemov
                     Tambah Baris
                 </button>
                 <button
-                    onClick={onPrint}
+                    onClick={handlePrint}
                     disabled={includedCount === 0 || isPrinting || serviceStatus === false}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -62,6 +73,16 @@ function BulkReprintTable({ rows, onNikChange, onNikBlur, onToggleCtpat, onRemov
                         <><Printer className="h-4 w-4" />Cetak ({includedCount})</>
                     )}
                 </button>
+                {showClear && (
+                    <button
+                        onClick={handleClearAll}
+                        disabled={isPrinting}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 bg-red-50 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Kosongkan Semua
+                    </button>
+                )}
             </div>
 
             {/* Table */}
@@ -379,6 +400,10 @@ export default function Reprint({ serviceStatus }) {
         if (bulkRows.length < MAX_PRINT_LIST) setBulkRows((prev) => [...prev, newRow()]);
     };
 
+    const handleBulkClearAll = () => {
+        setBulkRows([newRow(), newRow(), newRow()]);
+    };
+
     const handleBulkPrint = () => {
         const cards = bulkRows.filter((r) => r.nik.trim() && r.name).map((r) => ({
             name: r.name, department: r.department ?? '', job_level: r.job_level ?? '',
@@ -543,7 +568,7 @@ export default function Reprint({ serviceStatus }) {
                             </div>
                             <BulkReprintTable rows={bulkRows} onNikChange={handleBulkNikChange} onNikBlur={handleBulkNikBlur}
                                 onToggleCtpat={handleBulkToggleCtpat} onRemoveRow={handleBulkRemoveRow}
-                                onAddRow={handleBulkAddRow} onPrint={handleBulkPrint}
+                                onAddRow={handleBulkAddRow} onPrint={handleBulkPrint} onClearAll={handleBulkClearAll}
                                 isPrinting={isPrinting} serviceStatus={serviceStatus} />
                         </div>
                     )}
