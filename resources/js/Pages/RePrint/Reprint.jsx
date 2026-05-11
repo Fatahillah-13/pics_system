@@ -308,9 +308,15 @@ export default function Reprint({ serviceStatus }) {
     const submitPrint = (cards) => {
         if (isPrinting) return;
         setIsPrinting(true);
+        const pdfWindow = window.open('', '_blank');
         router.post(route('candidates.reprintIdCard.store'), { cards }, {
             preserveScroll: true,
-            onSuccess: (page) => { const u = page.props.flash?.pdf_url; if (u) window.open(u, '_blank'); setPrintList([]); },
+            onSuccess: (page) => {
+                const u = page.props.flash?.pdf_url;
+                if (u && pdfWindow) { pdfWindow.location.href = u; } else if (pdfWindow) { pdfWindow.close(); }
+                setPrintList([]);
+            },
+            onError: () => { if (pdfWindow) pdfWindow.close(); },
             onFinish: () => setIsPrinting(false),
         });
     };
@@ -380,9 +386,14 @@ export default function Reprint({ serviceStatus }) {
         }));
         if (!cards.length || isPrinting) return;
         setIsPrinting(true);
+        const pdfWindow = window.open('', '_blank');
         router.post(route('candidates.reprintIdCard.store'), { cards }, {
             preserveScroll: true,
-            onSuccess: (page) => { const u = page.props.flash?.pdf_url; if (u) window.open(u, '_blank'); },
+            onSuccess: (page) => {
+                const u = page.props.flash?.pdf_url;
+                if (u && pdfWindow) { pdfWindow.location.href = u; } else if (pdfWindow) { pdfWindow.close(); }
+            },
+            onError: () => { if (pdfWindow) pdfWindow.close(); },
             onFinish: () => setIsPrinting(false),
         });
     };

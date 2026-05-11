@@ -77,6 +77,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
     const handlePrint = (ids) => {
         if (printing) return;
         setPrinting(true);
+        const pdfWindow = window.open('', '_blank');
         router.post(
             route('candidates.printIdCard.store'),
             {
@@ -87,11 +88,14 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                 preserveScroll: true,
                 onSuccess: (page) => {
                     const pdfUrl = page.props.flash?.pdf_url;
-                    if (pdfUrl) {
-                        window.open(pdfUrl, '_blank');
+                    if (pdfUrl && pdfWindow) {
+                        pdfWindow.location.href = pdfUrl;
+                    } else if (pdfWindow) {
+                        pdfWindow.close();
                     }
                     setSelected([]);
                 },
+                onError: () => { if (pdfWindow) pdfWindow.close(); },
                 onFinish: () => setPrinting(false),
             }
         );
