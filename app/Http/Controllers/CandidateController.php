@@ -63,10 +63,17 @@ class CandidateController extends Controller
         $departments = Department::all();
         $joblevels = Joblevel::all();
 
+        $previousUrl = request()->get('from');
+        // Only allow relative URLs to prevent open redirect
+        if ($previousUrl && !str_starts_with($previousUrl, '/')) {
+            $previousUrl = null;
+        }
+
         return Inertia::render('NewCandidates/EditCandidate', [
             'candidate' => $candidate,
             'departments' => $departments,
             'joblevels' => $joblevels,
+            'previousUrl' => $previousUrl,
         ]);
     }
 

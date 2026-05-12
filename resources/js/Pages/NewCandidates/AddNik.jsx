@@ -145,7 +145,9 @@ export default function AddNik({ candidates }) {
     };
 
     const handleEdit = (candidateId) => {
-        router.get(route('candidates.edit', candidateId));
+        router.get(route('candidates.edit', candidateId), {
+            from: window.location.pathname + window.location.search,
+        });
     };
 
     const handleDelete = (candidate) => {

@@ -6,7 +6,8 @@ import { Search, Printer, AlertCircle, CheckCircle, Download, Filter, Edit2, Tra
 const ITEMS_PER_PAGE = 10;
 
 export default function PrintIdCard({ candidates, serviceStatus, currentFilter = 'unprinted' }) {
-    const { flash } = usePage().props;
+    const { flash, auth } = usePage().props;
+    const canPrint = (auth?.user?.permissions ?? []).includes('print id cards');
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [selected, setSelected] = useState([]);
@@ -102,7 +103,9 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
     };
 
     const handleEdit = (candidateId) => {
-        router.get(route('candidates.edit', candidateId));
+        router.get(route('candidates.edit', candidateId), {
+            from: window.location.pathname + window.location.search,
+        });
     };
 
     const handleDelete = (candidate) => {
@@ -228,7 +231,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
-                                {selected.length > 0 && (
+                                {canPrint && selected.length > 0 && (
                                     <button
                                         onClick={() => handlePrint(selected)}
                                         disabled={printing || serviceStatus === false}
@@ -285,9 +288,11 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             NIK
                                         </th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider w-20">
-                                            CTPAT
-                                        </th>
+                                        {canPrint && (
+                                            <th className="px-4 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider w-20">
+                                                CTPAT
+                                            </th>
+                                        )}
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                                             Aksi
                                         </th>
@@ -296,7 +301,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {paginatedCandidates.length === 0 ? (
                                         <tr>
-                                            <td colSpan="9" className="px-4 py-10 text-center text-sm text-gray-500">
+                                            <td colSpan={canPrint ? 9 : 8} className="px-4 py-10 text-center text-sm text-gray-500">
                                                 {searchQuery
                                                     ? 'Tidak ada kandidat yang cocok dengan pencarian.'
                                                     : currentFilter === 'printed'
@@ -348,24 +353,28 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                                     <td className="px-4 py-3 text-sm text-gray-700 font-mono">
                                                         {candidate.nik}
                                                     </td>
-                                                    <td className="px-4 py-3 text-center">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={ctpatSelected.has(candidate.id)}
-                                                            onChange={() => toggleCtpat(candidate.id)}
-                                                            className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                                                        />
-                                                    </td>
+                                                    {canPrint && (
+                                                        <td className="px-4 py-3 text-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={ctpatSelected.has(candidate.id)}
+                                                                onChange={() => toggleCtpat(candidate.id)}
+                                                                className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                                                            />
+                                                        </td>
+                                                    )}
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-1.5">
-                                                            <button
-                                                                onClick={() => handlePrint([candidate.id])}
-                                                                disabled={printing || serviceStatus === false}
-                                                                className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                                <Printer className="h-3.5 w-3.5" />
-                                                                {printing ? '...' : 'Cetak'}
-                                                            </button>
+                                                            {canPrint && (
+                                                                <button
+                                                                    onClick={() => handlePrint([candidate.id])}
+                                                                    disabled={printing || serviceStatus === false}
+                                                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                >
+                                                                    <Printer className="h-3.5 w-3.5" />
+                                                                    {printing ? '...' : 'Cetak'}
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={() => handleEdit(candidate.id)}
                                                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"

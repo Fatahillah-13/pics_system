@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
 
-export default function EditCandidate({ candidate, departments, joblevels }) {
+export default function EditCandidate({ candidate, departments, joblevels, previousUrl }) {
     const { data, setData, put, processing, errors } = useForm({
         name: candidate.name || '',
         nik: candidate.nik || '',
@@ -14,19 +14,24 @@ export default function EditCandidate({ candidate, departments, joblevels }) {
         first_working_day: candidate.first_working_day ? candidate.first_working_day.split('T')[0] : '',
     });
 
+    const handleBack = () => {
+        if (previousUrl) {
+            router.visit(previousUrl);
+        } else {
+            window.history.back();
+        }
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         put(route('candidates.update', candidate.id), {
             preserveScroll: true,
-            onSuccess: () => {
-                // Redirect back to the referring page
-                window.history.back();
-            },
+            onSuccess: handleBack,
         });
     };
 
     const handleCancel = () => {
-        window.history.back();
+        handleBack();
     };
 
     return (
