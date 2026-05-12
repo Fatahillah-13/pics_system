@@ -73,12 +73,12 @@ Route::middleware('auth', 'verified')->group(function () {
     Route::patch('/candidates/{candidate}/photo-number', [UploadImageController::class, 'updatePhotoNumber'])->middleware('permission:upload image')->name('candidates.updatePhotoNumber');
 
     // Add NIK Route
-    Route::get('/candidates/upload-nik', [AddNIKCandidateController::class, 'view'])->middleware('permission:upload nik')->name('candidates.uploadNik.view');
+    Route::get('/candidates/upload-nik', [AddNIKCandidateController::class, 'view'])->middleware('permission:view upload nik')->name('candidates.uploadNik.view');
     Route::post('/candidates/upload-nik', [AddNIKCandidateController::class, 'store'])->middleware('permission:upload nik')->name('candidates.uploadNik.store');
     Route::post('/candidates/upload-nik/many', [AddNIKCandidateController::class, 'storeMany'])->middleware('permission:upload nik')->name('candidates.uploadNik.storeMany');
 
     // Print ID Card Route
-    Route::get('/candidates/print-id-card', [PrintIdCardController::class, 'view'])->middleware('permission:print id cards')->name('candidates.printIdCard.view');
+    Route::get('/candidates/print-id-card', [PrintIdCardController::class, 'view'])->middleware('permission:view print id cards')->name('candidates.printIdCard.view');
     Route::post('/candidates/print-id-card', [PrintIdCardController::class, 'store'])->middleware('permission:print id cards')->name('candidates.printIdCard.store');
 
     // Bulk Add Candidate Route

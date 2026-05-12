@@ -17,7 +17,9 @@ const getPrefix = (candidate) => {
 };
 
 export default function AddNik({ candidates }) {
-    const { flash } = usePage().props;
+    const { flash, auth } = usePage().props;
+    const userPermissions = auth?.user?.permissions ?? [];
+    const can = (perm) => userPermissions.includes(perm);
     const [searchQuery, setSearchQuery] = useState('');
     const [nikSuffixes, setNikSuffixes] = useState({});
     const [saving, setSaving] = useState(null);
@@ -355,6 +357,7 @@ export default function AddNik({ candidates }) {
                                                         {candidate.joblevel?.name || '-'}
                                                     </td>
                                                     <td className="px-4 py-3">
+                                                        {can('upload nik') ? (
                                                         <div>
                                                             <div className="flex items-stretch">
                                                                 {/* Auto-generated prefix */}
@@ -399,9 +402,13 @@ export default function AddNik({ candidates }) {
                                                                 <p className="text-xs text-red-500 mt-1">{error}</p>
                                                             )}
                                                         </div>
+                                                        ) : (
+                                                            <span className="text-sm text-gray-400">-</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-1.5">
+                                                            {can('upload nik') && (
                                                             <button
                                                                 onClick={() => handleSave(candidate)}
                                                                 disabled={isSaving || !suffix}
@@ -409,6 +416,7 @@ export default function AddNik({ candidates }) {
                                                             >
                                                                 {isSaving ? 'Menyimpan...' : 'Simpan'}
                                                             </button>
+                                                            )}
                                                             <button
                                                                 onClick={() => handleEdit(candidate.id)}
                                                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
@@ -437,7 +445,7 @@ export default function AddNik({ candidates }) {
                         <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-2 text-xs text-gray-500">
                             <div className="flex items-center gap-3 flex-wrap">
                                 <span>Total: {filteredCandidates.length} kandidat</span>
-                                {pendingCandidates.length > 0 && (
+                                {can('upload nik') && pendingCandidates.length > 0 && (
                                     <button
                                         onClick={handleSaveAll}
                                         disabled={savingAll}

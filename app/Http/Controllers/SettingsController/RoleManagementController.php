@@ -25,9 +25,11 @@ class RoleManagementController extends Controller
             ],
             'Foto & NIK' => [
                 'upload image',
+                'view upload nik',
                 'upload nik',
             ],
             'ID Card' => [
+                'view print id cards',
                 'print id cards',
                 'reprint id cards',
             ],
@@ -45,13 +47,13 @@ class RoleManagementController extends Controller
         return Inertia::render('Settings/RoleManagement', [
             'roles' => Role::with('permissions', 'users')
                 ->get()
-                ->map(fn($role) => [
-                    'id'          => $role->id,
-                    'name'        => $role->name,
+                ->map(fn ($role) => [
+                    'id' => $role->id,
+                    'name' => $role->name,
                     'permissions' => $role->permissions->pluck('name'),
                     'users_count' => $role->users->count(),
                 ]),
-            'allPermissions'   => Permission::orderBy('name')->pluck('name'),
+            'allPermissions' => Permission::orderBy('name')->pluck('name'),
             'groupedPermissions' => $this->groupedPermissions(),
         ]);
     }
