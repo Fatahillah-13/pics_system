@@ -143,7 +143,9 @@ export default function AddCandidate({ candidates, departments, joblevels }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
     const fileInputRef = useRef(null);
-    const { errors: pageErrors } = usePage().props;
+    const { errors: pageErrors, auth } = usePage().props;
+    const userPermissions = auth?.user?.permissions ?? [];
+    const can = (perm) => userPermissions.includes(perm);
 
     const totalPages = Math.max(1, Math.ceil(candidates.length / perPage));
     const safePage = Math.min(currentPage, totalPages);
@@ -265,25 +267,38 @@ export default function AddCandidate({ candidates, departments, joblevels }) {
                             <div className="mb-4 flex items-center justify-between">
                                 <h3 className="text-lg font-medium text-gray-900">Daftar Kandidat</h3>
                                 <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setShowImportModal(true)}
-                                        className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
-                                    >
-                                        <Upload className="h-4 w-4" />
-                                        Import Excel
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setIsAdding(true);
-                                            setEditingId(null);
-                                            setErrors({});
-                                        }}
-                                        disabled={isAdding}
-                                        className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        Tambah Kandidat
-                                    </button>
+                                    {can('import candidates') && (
+                                        <button
+                                            onClick={() => setShowImportModal(true)}
+                                            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                            Import Excel
+                                        </button>
+                                    )}
+                                    {can('bulk add candidates') && (
+                                        <a
+                                            href={route('candidates.bulkAdd.view')}
+                                            className="inline-flex items-center gap-1 rounded-md bg-teal-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700"
+                                        >
+                                            <FileSpreadsheet className="h-4 w-4" />
+                                            Bulk Add
+                                        </a>
+                                    )}
+                                    {can('create candidates') && (
+                                        <button
+                                            onClick={() => {
+                                                setIsAdding(true);
+                                                setEditingId(null);
+                                                setErrors({});
+                                            }}
+                                            disabled={isAdding}
+                                            className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            Tambah Kandidat
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
