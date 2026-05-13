@@ -119,6 +119,11 @@ class ReprintIdCardController extends Controller
             $department = 'ASSEMBLY';
         }
 
+        // Normalize "QIP *" → "QIP"
+        if (stripos($department, 'QIP') === 0) {
+            $department = 'QIP';
+        }
+
         return $department;
     }
 

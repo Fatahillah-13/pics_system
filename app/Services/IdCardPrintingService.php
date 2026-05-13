@@ -3,13 +3,16 @@
 namespace App\Services;
 
 use App\Models\Candidate;
+use App\Models\CardTemplate;
+use Exception;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class IdCardPrintingService
 {
     protected string $serviceUrl;
+
     protected int $timeout;
 
     public function __construct()
@@ -25,9 +28,11 @@ class IdCardPrintingService
     {
         try {
             $response = Http::timeout(5)->get("{$this->serviceUrl}/");
+
             return $response->successful();
         } catch (Exception $e) {
             Log::error('ID Card Service health check failed', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -35,8 +40,7 @@ class IdCardPrintingService
     /**
      * Print ID cards for given candidates
      *
-     * @param array|\Illuminate\Support\Collection $candidates
-     * @return array
+     * @param  array|Collection  $candidates
      */
     public function printCards($candidates, array $ctpatIds = []): array
     {
@@ -44,12 +48,13 @@ class IdCardPrintingService
         $ctpatIdSet = array_flip($ctpatIds);
         $formattedCandidates = collect($candidates)->map(function ($candidate) use ($ctpatIdSet) {
             $isCtpat = $candidate instanceof Candidate && isset($ctpatIdSet[$candidate->id]);
+
             return $this->formatCandidateData($candidate, $isCtpat);
         })->toArray();
 
         Log::info('Sending print request to ID Card Service', [
             'count' => count($formattedCandidates),
-            'service_url' => $this->serviceUrl
+            'service_url' => $this->serviceUrl,
         ]);
 
         try {
@@ -64,7 +69,7 @@ class IdCardPrintingService
 
             Log::info('ID Card Service response received', [
                 'success' => isset($result[0]['status']) && $result[0]['status'] === 'success',
-                'total' => $result[0]['total_idcards'] ?? 0
+                'total' => $result[0]['total_idcards'] ?? 0,
             ]);
 
             return $result;
@@ -72,23 +77,25 @@ class IdCardPrintingService
         } catch (Exception $e) {
             Log::error('Failed to print ID cards', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            throw new Exception('Gagal mencetak ID Card: ' . $e->getMessage());
+            throw new Exception('Gagal mencetak ID Card: '.$e->getMessage());
         }
     }
 
-    protected function formatName(string $name): string {
+    protected function formatName(string $name): string
+    {
         $words = explode(' ', trim($name));
-        if(count($words) <= 2) {
+        if (count($words) <= 2) {
             return $name;
         }
 
         $firstTwo = array_slice($words, 0, 2);
         $rest = array_slice($words, 2);
 
-        $abbreviated = array_map(fn($word) => strtoupper($word[0]) . '.' , $rest);
+        $abbreviated = array_map(fn ($word) => strtoupper($word[0]).'.', $rest);
+
         return implode(' ', array_merge($firstTwo, $abbreviated));
     }
 
@@ -130,11 +137,24 @@ class IdCardPrintingService
     {
         $department = trim(explode('-', $department)[0]);
 
-        if (stripos($department, 'SEWING COMP') === 0)       $department = 'SEWING COMP';
-        if (stripos($department, 'SEWING MEKANIK') === 0)    $department = 'SEWING MEKANIK';
-        if (stripos($department, 'TECHNICAL ROLLING') === 0) $department = 'TECHNICAL ROLLING';
-        if (stripos($department, 'FINISH GOOD') === 0)       $department = 'FINISH GOOD';
-        if (stripos($department, 'ASSEMBLY') === 0)          $department = 'ASSEMBLY';
+        if (stripos($department, 'SEWING COMP') === 0) {
+            $department = 'SEWING COMP';
+        }
+        if (stripos($department, 'SEWING MEKANIK') === 0) {
+            $department = 'SEWING MEKANIK';
+        }
+        if (stripos($department, 'TECHNICAL ROLLING') === 0) {
+            $department = 'TECHNICAL ROLLING';
+        }
+        if (stripos($department, 'FINISH GOOD') === 0) {
+            $department = 'FINISH GOOD';
+        }
+        if (stripos($department, 'ASSEMBLY') === 0) {
+            $department = 'ASSEMBLY';
+        }
+        if (stripos($department, 'QIP') === 0) {
+            $department = 'QIP';
+        }
 
         return $department;
     }
@@ -148,15 +168,15 @@ class IdCardPrintingService
         $candidate->loadMissing(['joblevel', 'department']);
 
         // Find matching template using the model method
-        $template = \App\Models\CardTemplate::findForCandidate(
+        $template = CardTemplate::findForCandidate(
             $candidate->joblevel_id,
             $candidate->department_id,
             $isCtpat
         );
 
-        if (!$template) {
+        if (! $template) {
             // Fallback to first available template
-            $template = \App\Models\CardTemplate::first();
+            $template = CardTemplate::first();
         }
 
         return $template?->template_path ?? 'templates/default_template.png';
@@ -169,6 +189,7 @@ class IdCardPrintingService
     {
         try {
             $response = Http::timeout(5)->get("{$this->serviceUrl}/config");
+
             return $response->successful() ? $response->json() : [];
         } catch (Exception $e) {
             return [];
