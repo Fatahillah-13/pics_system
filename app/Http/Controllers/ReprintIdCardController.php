@@ -66,8 +66,8 @@ class ReprintIdCardController extends Controller
         $hasPhoto    = false;
         $photoSource = null;
 
-        // Resolve photo from network share
-        $networkPhoto = $this->resolvePhotoFromNetworkShare($nik);
+        // Resolve photo from API
+        $networkPhoto = $this->resolvePhotoFromApi($nik);
         if ($networkPhoto) {
             $hasPhoto    = true;
             $photoSource = 'network';
@@ -89,11 +89,6 @@ class ReprintIdCardController extends Controller
         ]);
     }
 
-    /**
-     * Attempt to locate employee photo from the HRD network share.
-     * If found, copy it to local storage so the ID card service can access it.
-     * Returns the storage-relative path (e.g. "reprint_photos/12345.jpg") or null.
-     */
     private function normalizeDepartment(string $department): string
     {
         // Strip suffix after hyphen (e.g. "QIP-F" → "QIP")
@@ -127,32 +122,41 @@ class ReprintIdCardController extends Controller
         return $department;
     }
 
-    private function resolvePhotoFromNetworkShare(string $nik): ?string
+    private function resolvePhotoFromApi(string $nik): ?string
     {
-        $networkDir = '\\\\10.10.100.237\\hrd\\HRD DEPARTMENT\\ANDY@HR-Team\\Foto Karyawan HWI';
-        $sourceFile = $networkDir . '\\' . $nik . '.jpg';
+        try {
+            $response = Http::timeout(10)
+                ->get('http://10.10.40.238:9090/photo', [
+                    'number_of_employee' => $nik,
+                ]);
 
-        if (! @file_exists($sourceFile)) {
-            return null;
-        }
+            if (! $response->successful() || empty($response->body())) {
+                return null;
+            }
 
-        $destDir = storage_path('app/public/reprint_photos');
-        if (! is_dir($destDir)) {
-            mkdir($destDir, 0755, true);
-        }
+            $destDir = storage_path('app/public/reprint_photos');
+            if (! is_dir($destDir)) {
+                mkdir($destDir, 0755, true);
+            }
 
-        $destFile = $destDir . DIRECTORY_SEPARATOR . $nik . '.jpg';
+            $destFile = $destDir . DIRECTORY_SEPARATOR . $nik . '.jpg';
 
-        if (! @copy($sourceFile, $destFile)) {
-            Log::warning('Failed to copy employee photo from network share', [
-                'source' => $sourceFile,
-                'destination' => $destFile,
-                'nik' => $nik,
+            if (file_put_contents($destFile, $response->body()) === false) {
+                Log::warning('Failed to save employee photo from API', [
+                    'nik' => $nik,
+                    'url' => 'http://10.10.40.238:9090/photo?number_of_employee=' . $nik,
+                ]);
+                return null;
+            }
+
+            return 'reprint_photos/' . $nik . '.jpg';
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch employee photo from API', [
+                'nik'   => $nik,
+                'error' => $e->getMessage(),
             ]);
             return null;
         }
-
-        return 'reprint_photos/' . $nik . '.jpg';
     }
 
     public function importPreview(Request $request): JsonResponse
@@ -194,8 +198,8 @@ class ReprintIdCardController extends Controller
             $photoSource = null;
 
             if ($nik !== '') {
-                // Try network share first for photo
-                $networkPhoto = $this->resolvePhotoFromNetworkShare($nik);
+                // Try photo API first
+                $networkPhoto = $this->resolvePhotoFromApi($nik);
                 if ($networkPhoto) {
                     $hasPhoto    = true;
                     $photoSource = 'network';
@@ -274,8 +278,8 @@ class ReprintIdCardController extends Controller
                 ->where('nik', $card['employee_id'])
                 ->first();
 
-            // Priority: network share photo → candidate image_path → fallback {nik}.jpg
-            $networkPhoto = $this->resolvePhotoFromNetworkShare($card['employee_id']);
+            // Priority: photo API → candidate image_path → fallback {nik}.jpg
+            $networkPhoto = $this->resolvePhotoFromApi($card['employee_id']);
             $photoFilename = $networkPhoto ?? $candidate?->image_path ?? ($card['employee_id'].'.jpg');
 
             $cardTemplate = 'templates/default_template.png';
