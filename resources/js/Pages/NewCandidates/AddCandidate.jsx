@@ -50,7 +50,10 @@ function SearchableSelect({ value, onChange, options, placeholder }) {
                 setOpen(false);
             }
         };
-        const onScroll = () => setOpen(false);
+        const onScroll = (e) => {
+            if (dropdownRef.current && dropdownRef.current.contains(e.target)) return;
+            setOpen(false);
+        };
         document.addEventListener('mousedown', handler);
         window.addEventListener('scroll', onScroll, true);
         return () => {
