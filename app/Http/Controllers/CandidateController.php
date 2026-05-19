@@ -99,6 +99,18 @@ class CandidateController extends Controller
             $filename = 'candidates/' . $candidate->id . '_' . time() . '.' . $request->file('photo')->getClientOriginalExtension();
             Storage::disk('public')->put($filename, file_get_contents($request->file('photo')->getRealPath()));
             $validated['image_path'] = $filename;
+
+            // Sync photo to new_employees_photo folder if candidate already has a NIK
+            $nik = $validated['nik'] ?? $candidate->nik;
+            if ($nik) {
+                $destinationDir = storage_path('new_employees_photo');
+                if (! is_dir($destinationDir)) {
+                    mkdir($destinationDir, 0755, true);
+                }
+                $sourcePath = Storage::disk('public')->path($filename);
+                $destinationPath = $destinationDir . DIRECTORY_SEPARATOR . $nik . '.jpg';
+                @copy($sourcePath, $destinationPath);
+            }
         }
 
         unset($validated['photo']);
