@@ -1,22 +1,134 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Plus, Trash2, Check, X, Pencil, Upload, FileSpreadsheet, Download } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Plus, Trash2, Check, X, Pencil, Upload, FileSpreadsheet, Download, ChevronDown, Search } from 'lucide-react';
 
-function InlineSelect({ value, onChange, options, placeholder }) {
+function SearchableSelect({ value, onChange, options, placeholder }) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const [dropdownStyle, setDropdownStyle] = useState({});
+    const buttonRef = useRef(null);
+    const dropdownRef = useRef(null);
+    const searchRef = useRef(null);
+
+    const selected = options.find((o) => String(o.id) === String(value));
+    const filtered = options.filter((o) =>
+        o.name.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const updatePosition = useCallback(() => {
+        if (!buttonRef.current) return;
+        const rect = buttonRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const dropdownHeight = Math.min(220, spaceBelow - 8);
+        setDropdownStyle({
+            position: 'fixed',
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: Math.max(rect.width, 220),
+            maxHeight: dropdownHeight,
+            zIndex: 9999,
+        });
+    }, []);
+
+    useEffect(() => {
+        if (open) {
+            setSearch('');
+            updatePosition();
+            setTimeout(() => searchRef.current?.focus(), 0);
+        }
+    }, [open, updatePosition]);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => {
+            if (
+                buttonRef.current && !buttonRef.current.contains(e.target) &&
+                dropdownRef.current && !dropdownRef.current.contains(e.target)
+            ) {
+                setOpen(false);
+            }
+        };
+        const onScroll = () => setOpen(false);
+        document.addEventListener('mousedown', handler);
+        window.addEventListener('scroll', onScroll, true);
+        return () => {
+            document.removeEventListener('mousedown', handler);
+            window.removeEventListener('scroll', onScroll, true);
+        };
+    }, [open]);
+
+    const handleSelect = (id) => {
+        onChange(id);
+        setOpen(false);
+    };
+
     return (
-        <select
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:border-indigo-500 focus:ring-indigo-500"
-        >
-            <option value="">{placeholder}</option>
-            {options.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                    {opt.name}
-                </option>
-            ))}
-        </select>
+        <div className="relative w-full">
+            <button
+                ref={buttonRef}
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+                <span className={`truncate ${selected ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {selected ? selected.name : placeholder}
+                </span>
+                <ChevronDown className={`ml-1 h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+
+            {open && createPortal(
+                <div
+                    ref={dropdownRef}
+                    style={dropdownStyle}
+                    className="flex flex-col rounded-md border border-gray-200 bg-white shadow-xl"
+                >
+                    <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-2">
+                        <Search className="h-4 w-4 shrink-0 text-gray-400" />
+                        <input
+                            ref={searchRef}
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Cari..."
+                            className="w-full border-0 bg-transparent p-0 text-sm text-gray-700 focus:outline-none focus:ring-0"
+                        />
+                    </div>
+                    <ul className="overflow-y-auto py-1">
+                        <li>
+                            <button
+                                type="button"
+                                onClick={() => handleSelect('')}
+                                className="w-full px-3 py-2 text-left text-sm text-gray-400 hover:bg-indigo-50"
+                            >
+                                {placeholder}
+                            </button>
+                        </li>
+                        {filtered.length > 0 ? (
+                            filtered.map((opt) => (
+                                <li key={opt.id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSelect(opt.id)}
+                                        className={`w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 ${
+                                            String(opt.id) === String(value)
+                                                ? 'bg-indigo-100 font-medium text-indigo-700'
+                                                : 'text-gray-900'
+                                        }`}
+                                    >
+                                        {opt.name}
+                                    </button>
+                                </li>
+                            ))
+                        ) : (
+                            <li className="px-3 py-2 text-sm text-gray-400">Tidak ditemukan</li>
+                        )}
+                    </ul>
+                </div>,
+                document.body
+            )}
+        </div>
     );
 }
 
@@ -57,11 +169,11 @@ function EditableRow({ candidate, departments, joblevels, onCancel, onSave, erro
                 {errors?.photo_number && <p className="text-xs text-red-500 mt-1">{errors.photo_number}</p>}
             </td>
             <td className="px-3 py-2">
-                <InlineSelect value={form.joblevel_id} onChange={set('joblevel_id')} options={joblevels} placeholder="Pilih Job Level" />
+                <SearchableSelect value={form.joblevel_id} onChange={set('joblevel_id')} options={joblevels} placeholder="Pilih Job Level" />
                 {errors?.joblevel_id && <p className="text-xs text-red-500 mt-1">{errors.joblevel_id}</p>}
             </td>
             <td className="px-3 py-2">
-                <InlineSelect value={form.department_id} onChange={set('department_id')} options={departments} placeholder="Pilih Department" />
+                <SearchableSelect value={form.department_id} onChange={set('department_id')} options={departments} placeholder="Pilih Department" />
                 {errors?.department_id && <p className="text-xs text-red-500 mt-1">{errors.department_id}</p>}
             </td>
             <td className="px-3 py-2">
