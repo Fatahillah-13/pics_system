@@ -96,7 +96,8 @@ class CandidateController extends Controller
             if ($candidate->image_path && Storage::disk('public')->exists($candidate->image_path)) {
                 Storage::disk('public')->delete($candidate->image_path);
             }
-            $filename = 'candidates/' . $candidate->id . '_' . time() . '.' . $request->file('photo')->getClientOriginalExtension();
+            $ext = str_replace('jpeg', 'jpg', strtolower($request->file('photo')->getClientOriginalExtension()));
+            $filename = 'candidates/' . $candidate->id . '_' . time() . '.' . $ext;
             Storage::disk('public')->put($filename, file_get_contents($request->file('photo')->getRealPath()));
             $validated['image_path'] = $filename;
 
