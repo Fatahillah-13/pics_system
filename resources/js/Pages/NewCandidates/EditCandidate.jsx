@@ -1,9 +1,14 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Camera } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 export default function EditCandidate({ candidate, departments, joblevels, previousUrl }) {
-    const { data, setData, put, processing, errors } = useForm({
+    const photoInputRef = useRef(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
+
+    const { data, setData, post, processing, errors } = useForm({
+        _method: 'PUT',
         name: candidate.name || '',
         nik: candidate.nik || '',
         photo_number: candidate.photo_number || '',
@@ -12,6 +17,7 @@ export default function EditCandidate({ candidate, departments, joblevels, previ
         birthplace: candidate.birthplace || '',
         birthdate: candidate.birthdate ? candidate.birthdate.split('T')[0] : '',
         first_working_day: candidate.first_working_day ? candidate.first_working_day.split('T')[0] : '',
+        photo: null,
     });
 
     const handleBack = () => {
@@ -24,10 +30,19 @@ export default function EditCandidate({ candidate, departments, joblevels, previ
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route('candidates.update', candidate.id), {
+        post(route('candidates.update', candidate.id), {
             preserveScroll: true,
             onSuccess: handleBack,
         });
+    };
+
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setData('photo', file);
+        const reader = new FileReader();
+        reader.onload = (ev) => setPhotoPreview(ev.target.result);
+        reader.readAsDataURL(file);
     };
 
     const handleCancel = () => {
@@ -57,19 +72,50 @@ export default function EditCandidate({ candidate, departments, joblevels, previ
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div className="p-6">
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Candidate Photo Preview */}
-                                {candidate.image_path && (
-                                    <div className="flex justify-center">
-                                        <div className="text-center">
-                                            <img
-                                                src={`/storage/${candidate.image_path}`}
-                                                alt={candidate.name}
-                                                className="h-40 w-32 object-cover rounded-lg shadow-md mx-auto"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-2">Foto Kandidat</p>
+                                {/* Candidate Photo */}
+                                <div className="flex justify-center">
+                                    <div className="text-center">
+                                        <div className="relative inline-block">
+                                            {photoPreview || candidate.image_path ? (
+                                                <img
+                                                    src={photoPreview || `/storage/${candidate.image_path}`}
+                                                    alt={candidate.name}
+                                                    className="h-40 w-32 object-cover rounded-lg shadow-md mx-auto"
+                                                />
+                                            ) : (
+                                                <div className="h-40 w-32 bg-gray-100 rounded-lg shadow-md mx-auto flex items-center justify-center">
+                                                    <Camera className="h-10 w-10 text-gray-400" />
+                                                </div>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => photoInputRef.current?.click()}
+                                                className="absolute bottom-1 right-1 bg-indigo-600 text-white rounded-full p-1 shadow hover:bg-indigo-700 transition-colors"
+                                                title="Ganti Foto"
+                                            >
+                                                <Camera className="h-4 w-4" />
+                                            </button>
                                         </div>
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            {photoPreview ? 'Foto baru dipilih' : 'Foto Kandidat'}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() => photoInputRef.current?.click()}
+                                            className="mt-1 text-xs text-indigo-600 hover:text-indigo-800 underline"
+                                        >
+                                            Ganti Foto
+                                        </button>
+                                        <input
+                                            ref={photoInputRef}
+                                            type="file"
+                                            accept="image/jpeg,image/png"
+                                            className="hidden"
+                                            onChange={handlePhotoChange}
+                                        />
+                                        {errors.photo && <p className="text-xs text-red-500 mt-1">{errors.photo}</p>}
                                     </div>
-                                )}
+                                </div>
 
                                 {/* Name */}
                                 <div>

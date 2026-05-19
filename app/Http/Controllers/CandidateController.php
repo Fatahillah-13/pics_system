@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\Joblevel;
 use Illuminate\Http\Request;
 use App\Models\ActivityLog;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -88,8 +89,19 @@ class CandidateController extends Controller
             'birthplace' => 'nullable|string|max:255',
             'birthdate' => 'nullable|date',
             'first_working_day' => 'nullable|date',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ]);
 
+        if ($request->hasFile('photo')) {
+            if ($candidate->image_path && Storage::disk('public')->exists($candidate->image_path)) {
+                Storage::disk('public')->delete($candidate->image_path);
+            }
+            $filename = 'candidates/' . $candidate->id . '_' . time() . '.' . $request->file('photo')->getClientOriginalExtension();
+            Storage::disk('public')->put($filename, file_get_contents($request->file('photo')->getRealPath()));
+            $validated['image_path'] = $filename;
+        }
+
+        unset($validated['photo']);
         $candidate->update($validated);
 
         ActivityLog::create([
