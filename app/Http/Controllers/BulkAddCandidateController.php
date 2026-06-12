@@ -62,6 +62,7 @@ class BulkAddCandidateController extends Controller
 
         $photos = $request->file('photos', []);
         $saved = 0;
+        $ids = [];
 
         foreach ($candidates as $index => $data) {
             $joblevelId = $data['joblevel_id'] ?? null;
@@ -87,21 +88,13 @@ class BulkAddCandidateController extends Controller
                 'image_path'       => null,
             ]);
 
-            // Store photo if provided
-            if (!empty($photos[$index])) {
-                $file = $photos[$index];
-                $ext = $file->getClientOriginalExtension() ?: 'jpg';
-                $filename = 'candidates/' . $candidate->id . '_' . time() . '.' . $ext;
-                Storage::disk('public')->putFileAs('candidates', $file, basename($filename));
-                $candidate->update(['image_path' => $filename]);
-            }
-
+            $ids[] = $candidate->id;
             $saved++;
 
             ActivityLog::create([
                 'action' => 'create',
-                'model' => 'Candidate',
-                'model_id' => $candidate->id,
+                'candidate_id' => $candidate->id,
+                'user_id' => auth()->id(),
                 'description' => "Kandidat {$candidate->name} ditambahkan melalui bulk import",
             ]);
         }
@@ -109,7 +102,33 @@ class BulkAddCandidateController extends Controller
         return response()->json([
             'message' => $saved . ' kandidat berhasil disimpan.',
             'saved'   => $saved,
+            'ids'     => $ids,
         ]);
+    }
+
+    public function storePhotos(Request $request)
+    {
+        $photos = $request->file('photos', []);
+        $ids    = $request->input('ids', []);
+
+        foreach ($photos as $i => $file) {
+            $candidateId = $ids[$i] ?? null;
+            if (!$candidateId) {
+                continue;
+            }
+
+            $candidate = Candidate::find($candidateId);
+            if (!$candidate) {
+                continue;
+            }
+
+            $ext = $file->getClientOriginalExtension() ?: 'jpg';
+            $filename = 'candidates/' . $candidate->id . '_' . time() . '.' . $ext;
+            Storage::disk('public')->putFileAs('candidates', $file, basename($filename));
+            $candidate->update(['image_path' => $filename]);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     private function parseDate($value): ?string

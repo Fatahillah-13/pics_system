@@ -202,7 +202,7 @@ export default function BulkAdd({ departments, joblevels }) {
                 )
             );
 
-            // ── Step 2: build FormData ──
+            // ── Step 2: send candidate data only (no photos) ──
             const fd = new FormData();
             const payload = candidates.map((c) => ({
                 name:              c.name,
@@ -217,20 +217,37 @@ export default function BulkAdd({ departments, joblevels }) {
                 first_working_day: c.first_working_day ?? null,
             }));
             fd.append('candidates', JSON.stringify(payload));
-            compressedPhotos.forEach((blob, i) => {
-                if (blob) fd.append(`photos[${i}]`, blob, `photo_${i}.jpg`);
-            });
 
-            // ── Step 3: upload with progress tracking ──
             const res = await window.axios.post(route('candidates.bulkAdd.store'), fd, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 onUploadProgress: (e) => {
-                    if (e.total) {
-                        // Cap at 99% — 100% reserved for when server finishes
-                        setSaveProgress(Math.min(99, Math.round((e.loaded / e.total) * 100)));
-                    }
+                    if (e.total) setSaveProgress(Math.min(40, Math.round((e.loaded / e.total) * 40)));
                 },
             });
+
+            setSaveProgress(40);
+
+            // ── Step 3: batch-upload photos (10 per request) ──
+            const savedIds = res.data.ids ?? []; // array of candidate IDs in order
+            const photoItems = compressedPhotos
+                .map((blob, i) => ({ candidateId: savedIds[i], blob }))
+                .filter(({ candidateId, blob }) => candidateId && blob);
+
+            const BATCH_SIZE = 10;
+            const totalBatches = Math.ceil(photoItems.length / BATCH_SIZE);
+
+            for (let b = 0; b < totalBatches; b++) {
+                const batch = photoItems.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
+                const bfd = new FormData();
+                batch.forEach(({ candidateId, blob }, i) => {
+                    bfd.append(`ids[${i}]`, candidateId);
+                    bfd.append(`photos[${i}]`, blob, `photo_${i}.jpg`);
+                });
+                await window.axios.post(route('candidates.bulkAdd.storePhotos'), bfd, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                setSaveProgress(40 + Math.round(((b + 1) / Math.max(totalBatches, 1)) * 59));
+            }
 
             setSaveProgress(100);
             candidates.forEach((c) => { if (c.previewUrl) URL.revokeObjectURL(c.previewUrl); });

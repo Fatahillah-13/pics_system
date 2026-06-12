@@ -85,6 +85,7 @@ Route::middleware('auth', 'verified')->group(function () {
     Route::get('/candidates/bulk-add', [BulkAddCandidateController::class, 'view'])->middleware('permission:bulk add candidates')->name('candidates.bulkAdd.view');
     Route::post('/candidates/bulk-add/preview', [BulkAddCandidateController::class, 'preview'])->middleware('permission:bulk add candidates')->name('candidates.bulkAdd.preview');
     Route::post('/candidates/bulk-add', [BulkAddCandidateController::class, 'store'])->middleware('permission:bulk add candidates')->name('candidates.bulkAdd.store');
+    Route::post('/candidates/bulk-add/photos', [BulkAddCandidateController::class, 'storePhotos'])->middleware('permission:bulk add candidates')->name('candidates.bulkAdd.storePhotos');
 
     // Reprint ID Card Route
     Route::get('/re-print/search-employees', [ReprintIdCardController::class, 'searchEmployees'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.search');
