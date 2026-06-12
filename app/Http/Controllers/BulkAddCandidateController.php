@@ -111,19 +111,24 @@ class BulkAddCandidateController extends Controller
             return null;
         }
 
+        // PhpSpreadsheet kadang mengembalikan objek DateTime langsung
+        if ($value instanceof \DateTimeInterface) {
+            return \Carbon\Carbon::instance($value)->format('Y-m-d');
+        }
+
         if (is_numeric($value)) {
             return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y-m-d');
         }
 
-        try {
-            return \Carbon\Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
-        } catch (\Exception $e) {
-            // Coba format Y-m-d (sudah diparse sebelumnya dari preview)
+        $formats = ['d/m/Y', 'Y-m-d', 'd-m-Y', 'm/d/Y', 'd/m/Y H:i:s', 'Y-m-d H:i:s'];
+        foreach ($formats as $format) {
             try {
-                return \Carbon\Carbon::createFromFormat('Y-m-d', $value)->format('Y-m-d');
-            } catch (\Exception $e2) {
-                return null;
+                return \Carbon\Carbon::createFromFormat($format, $value)->format('Y-m-d');
+            } catch (\Exception $e) {
+                continue;
             }
         }
+
+        return null;
     }
 }
