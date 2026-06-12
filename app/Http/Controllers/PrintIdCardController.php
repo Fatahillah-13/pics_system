@@ -37,7 +37,7 @@ class PrintIdCardController extends Controller
         // 'all' doesn't add any filter
 
         return Inertia::render('NewCandidates/PrintIdCard', [
-            'candidates' => $query->latest()->get(),
+            'candidates' => $query->orderBy('nik')->get(),
             'departments' => Department::all(),
             'joblevels' => Joblevel::all(),
             'serviceStatus' => $this->printingService->healthCheck(),
