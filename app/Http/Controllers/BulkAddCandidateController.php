@@ -38,6 +38,13 @@ class BulkAddCandidateController extends Controller
         // Filter out completely empty rows
         $rows = array_values(array_filter($rows, fn($row) => !empty(array_filter($row, fn($v) => $v !== null && $v !== ''))));
 
+        // Parse date fields so preview shows human-readable dates (not Excel serial numbers)
+        $rows = array_map(function ($row) {
+            $row['birthdate']         = $this->parseDate($row['birthdate'] ?? null);
+            $row['first_working_day'] = $this->parseDate($row['first_working_day'] ?? null);
+            return $row;
+        }, $rows);
+
         return response()->json(['rows' => $rows]);
     }
 
