@@ -13,7 +13,7 @@ const ITEMS_PER_PAGE = 10;
 const getPrefix = (candidate) => {
     if (!candidate.first_working_day) return '';
     const [yearStr, monthStr] = candidate.first_working_day.split('-');
-    return yearStr.slice(2) + monthStr;
+    return yearStr.slice(2) + monthStr + '0';
 };
 
 export default function AddNik({ candidates }) {
@@ -27,7 +27,7 @@ export default function AddNik({ candidates }) {
     const [errors, setErrors] = useState({});
     const [bulkError, setBulkError] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [bulkInput, setBulkInput] = useState('');
+    const [bulkStartNumber, setBulkStartNumber] = useState('');
     const [showBulk, setShowBulk] = useState(false);
     const [bulkPrefix, setBulkPrefix] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -60,28 +60,22 @@ export default function AddNik({ candidates }) {
     };
 
     const applyBulkInput = () => {
-        const suffixes = bulkInput
-            .split(',')
-            .map((s) => s.trim().replace(/\D/g, ''))
-            .filter((s) => s !== '');
-        if (suffixes.length === 0) return;
+        const startNum = parseInt(bulkStartNumber.replace(/\D/g, ''), 10);
+        if (isNaN(startNum)) return;
 
-        // Only apply to candidates whose prefix matches the selected bulkPrefix
         const targetCandidates = filteredCandidates.filter(
             (c) => getPrefix(c) === bulkPrefix
         );
 
         const newSuffixes = { ...nikSuffixes };
-        const newErrors = { ...errors };
+        const newErrors  = { ...errors };
         targetCandidates.forEach((candidate, index) => {
-            if (suffixes[index] !== undefined) {
-                newSuffixes[candidate.id] = suffixes[index];
-                delete newErrors[candidate.id];
-            }
+            newSuffixes[candidate.id] = String(startNum + index);
+            delete newErrors[candidate.id];
         });
         setNikSuffixes(newSuffixes);
         setErrors(newErrors);
-        setBulkInput('');
+        setBulkStartNumber('');
     };
 
     const handleSave = (candidate) => {
@@ -263,13 +257,13 @@ export default function AddNik({ candidates }) {
                                     </div>
 
                                     <p className="text-xs text-gray-500 mb-2">
-                                        Masukkan <span className="font-semibold">nomor akhir NIK</span> dipisahkan koma sesuai urutan kandidat ber-prefix
+                                        Masukkan <span className="font-semibold">nomor urut pertama</span>, sistem akan melanjutkan otomatis
                                         {bulkPrefix ? (
-                                            <> <span className="font-mono text-indigo-600">{bulkPrefix}</span> ({filteredCandidates.filter((c) => getPrefix(c) === bulkPrefix).length} kandidat)</>
-                                        ) : ' yang dipilih'}.
-                                        {bulkPrefix && (
-                                            <><br />Contoh: <span className="font-mono text-gray-700">074308, 074310</span> &rarr; NIK: <span className="font-mono text-gray-700">{bulkPrefix}074308, {bulkPrefix}074310</span></>
-                                        )}
+                                            <> untuk {filteredCandidates.filter((c) => getPrefix(c) === bulkPrefix).length} kandidat ber-prefix{' '}
+                                            <span className="font-mono text-indigo-600">{bulkPrefix}</span>.<br />
+                                            Contoh: <span className="font-mono text-gray-700">74300</span> &rarr; NIK:{' '}
+                                            <span className="font-mono text-gray-700">{bulkPrefix}74300, {bulkPrefix}74301, {bulkPrefix}74302, ...</span></>
+                                        ) : ' yang dipilih.'}
                                     </p>
 
                                     {bulkError && (
@@ -277,23 +271,26 @@ export default function AddNik({ candidates }) {
                                             {bulkError}
                                         </div>
                                     )}
-                                    <textarea
-                                        rows={3}
-                                        value={bulkInput}
-                                        onChange={(e) => setBulkInput(e.target.value)}
-                                        placeholder={bulkPrefix ? '074308, 074310, 074312, ...' : 'Pilih prefix terlebih dahulu...'}
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={bulkStartNumber}
+                                        onChange={(e) => setBulkStartNumber(e.target.value.replace(/\D/g, ''))}
+                                        placeholder={bulkPrefix ? 'Nomor urut pertama, contoh: 74300' : 'Pilih prefix terlebih dahulu...'}
                                         disabled={!bulkPrefix}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:border-indigo-500 focus:ring-indigo-500 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                     <div className="flex items-center justify-between mt-2 gap-2">
                                         <span className="text-xs text-gray-400">
-                                            {bulkPrefix
-                                                ? `Diterapkan ke kandidat ber-prefix ${bulkPrefix} (berurutan dari atas)`
-                                                : 'Pilih prefix di atas untuk mulai mengisi'}
+                                            {bulkPrefix && bulkStartNumber
+                                                ? `Preview: ${bulkPrefix}${bulkStartNumber}, ${bulkPrefix}${parseInt(bulkStartNumber)+1}, ${bulkPrefix}${parseInt(bulkStartNumber)+2}, ...`
+                                                : bulkPrefix
+                                                    ? `Masukkan nomor urut pertama untuk prefix ${bulkPrefix}`
+                                                    : 'Pilih prefix di atas untuk mulai mengisi'}
                                         </span>
                                         <button
                                             onClick={applyBulkInput}
-                                            disabled={!bulkInput.trim() || !bulkPrefix}
+                                            disabled={!bulkStartNumber.trim() || !bulkPrefix}
                                             className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Terapkan
