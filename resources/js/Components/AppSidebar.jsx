@@ -20,8 +20,16 @@ import { User, Home, DatabaseZapIcon, ImagePlus, PlusSquareIcon, IdCardIcon, Use
 // Definisikan item menu navigasi
 const menuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Home },
-    { title: "Cetak Ulang", url: "/re-print", icon: User, permission: 'reprint id cards'},
+    // { title: "Cetak Ulang", url: "/re-print", icon: User, permission: 'reprint id cards'},
     { title: "Bulk Add Kandidat", url: "/candidates/bulk-add", icon: DatabaseZapIcon, permission: 'bulk add candidates' },
+    {
+        title: "Cetak Ulang",
+        icon: LucideFilePlus,
+        subItems: [
+            { title: "Cetak Ulang", url: "/re-print", icon: User, permission: 'reprint id cards'},
+            { title: "Cetak Ulang Custom", url: "/re-print-custom", icon: User, permission: 'reprint id cards'},
+        ],
+    },
     {
         title: "Karyawan Baru",
         icon: LucideFilePlus,

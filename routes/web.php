@@ -93,6 +93,10 @@ Route::middleware('auth', 'verified')->group(function () {
     Route::post('/re-print/import-preview', [ReprintIdCardController::class, 'importPreview'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.importPreview');
     Route::get('/re-print', [ReprintIdCardController::class, 'view'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.view');
     Route::post('/re-print', [ReprintIdCardController::class, 'store'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.store');
+
+    // Reprint Custom ID Card Route
+    Route::get('/re-print-custom', [ReprintIdCardController::class, 'viewCustom'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.viewCustom');
+    Route::post('/re-print-custom', [ReprintIdCardController::class, 'storeCustom'])->middleware('permission:reprint id cards')->name('candidates.reprintIdCard.storeCustom');
 });
 
 Route::middleware('auth')->group(function () {

@@ -367,4 +367,12 @@ class ReprintIdCardController extends Controller
             return back()->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
+
+    // Reprint Custom ID Card Methods
+    public function viewCustom()
+    {
+        return Inertia::render('RePrint/CustomPrint', [
+            'serviceStatus' => $this->printingService->healthCheck(),
+        ]);
+    }
 }
