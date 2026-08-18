@@ -15,7 +15,7 @@ import {
     SidebarMenuSubButton,
 } from "@/Components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible";
-import { User, Home, DatabaseZapIcon, ImagePlus, PlusSquareIcon, IdCardIcon, UserPlus2, Users , LucideFilePlus, Settings, HistoryIcon, IdCardLanyard , LogOut, ChevronRight, ShieldCheck } from "lucide-react";
+import { User, Home, DatabaseZapIcon, ImagePlus, PlusSquareIcon, IdCardIcon, UserPlus2, Users , LucideFileUser, LucideFilePlus, Settings, HistoryIcon, IdCardLanyard , LogOut, ChevronRight, ShieldCheck } from "lucide-react";
 
 // Definisikan item menu navigasi
 const menuItems = [
@@ -24,10 +24,10 @@ const menuItems = [
     { title: "Bulk Add Kandidat", url: "/candidates/bulk-add", icon: DatabaseZapIcon, permission: 'bulk add candidates' },
     {
         title: "Cetak Ulang",
-        icon: LucideFilePlus,
+        icon: LucideFileUser,
         subItems: [
-            { title: "Cetak Ulang", url: "/re-print", icon: User, permission: 'reprint id cards'},
-            { title: "Cetak Ulang Custom", url: "/re-print-custom", icon: User, permission: 'reprint id cards'},
+            { title: "Cetak Ulang", url: "/re-print", icon: LucideFileUser, permission: 'reprint id cards'},
+            { title: "Cetak Ulang Custom", url: "/re-print-custom", icon: LucideFileUser, permission: 'reprint id cards'},
         ],
     },
     {

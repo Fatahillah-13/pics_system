@@ -4,6 +4,8 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import cv2
 import os
+import base64
+import io
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -38,11 +40,15 @@ fonts = {
 
 def validate_candidate_data(candidate: Dict) -> Tuple[bool, Optional[str]]:
     """Validate required fields in candidate data"""
-    required_fields = ['name', 'department', 'job_level', 'employee_id', 'photo_filename', 'card_template']
+    required_fields = ['name', 'department', 'job_level', 'employee_id', 'card_template']
 
     for field in required_fields:
         if field not in candidate or not candidate[field]:
             return False, f"Missing required field: {field}"
+
+    # Photo must be either filename or base64
+    if not candidate.get('photo_filename') and not candidate.get('photo_base64'):
+        return False, "Missing photo: either photo_filename or photo_base64 required"
 
     return True, None
 
@@ -122,27 +128,45 @@ def process_single_card(candidate: Dict) -> Dict:
         level = candidate.get("job_level", "").upper()
         employee_id = candidate.get("employee_id", "")
         foto_filename = candidate.get("photo_filename", "")
+        foto_base64 = candidate.get("photo_base64", "")
         card_template = candidate.get("card_template", "")
+
+        # Custom parameters (new)
+        custom_name_offset_y = candidate.get("custom_name_offset_y", 0)
+        custom_font_size = candidate.get("custom_font_size", None)
 
         # Validate
         is_valid, error_msg = validate_candidate_data(candidate)
         if not is_valid:
             raise ValueError(error_msg)
 
-        # Get file paths
+        # Get template path
         template_path = get_template_path(card_template)
-        foto_path = get_photo_path(foto_filename)
 
         logger.info(f"Processing card for: {nama} (ID: {employee_id})")
         logger.debug(f"Template: {template_path}")
-        logger.debug(f"Photo: {foto_path}")
+        if custom_name_offset_y != 0:
+            logger.debug(f"Custom name offset Y: {custom_name_offset_y}")
+        if custom_font_size:
+            logger.debug(f"Custom font size: {custom_font_size}")
 
-        # Validate file existence
+        # Validate template existence
         if not template_path.exists():
             raise FileNotFoundError(f"Template not found: {template_path}")
 
-        if not foto_path.exists():
-            raise FileNotFoundError(f"Photo not found: {foto_path}")
+        # Load photo from base64 or file
+        if foto_base64:
+            # Decode base64 to image
+            logger.debug(f"Loading photo from base64 (uploaded photo)")
+            foto_bytes = base64.b64decode(foto_base64)
+            foto = Image.open(io.BytesIO(foto_bytes)).convert('RGB')
+        else:
+            # Load from file system
+            foto_path = get_photo_path(foto_filename)
+            logger.debug(f"Photo: {foto_path}")
+            if not foto_path.exists():
+                raise FileNotFoundError(f"Photo not found: {foto_path}")
+            foto = Image.open(foto_path).convert('RGB')
 
         # Load template and detect yellow box
         template = Image.open(template_path).convert('RGB')
@@ -155,8 +179,7 @@ def process_single_card(candidate: Dict) -> Dict:
         x, y, w, h = box_coords
         logger.debug(f"Yellow box found at: x={x}, y={y}, w={w}, h={h}")
 
-        # Load and resize photo
-        foto = Image.open(foto_path).convert('RGB')
+        # Resize photo to fit yellow box
         foto_resized = foto.resize((w, h), Image.Resampling.LANCZOS)
 
         # Paste photo onto template
@@ -166,13 +189,21 @@ def process_single_card(candidate: Dict) -> Dict:
         draw = ImageDraw.Draw(template)
         center_x = x + w // 2
 
+        # Use custom font if specified
+        font_nama = fonts["nama"]
+        if custom_font_size:
+            try:
+                font_nama = load_font(config.FONT_CONFIG["nama"]["path"], custom_font_size)
+            except Exception:
+                logger.warning(f"Failed to load custom font size {custom_font_size}, using default")
+
         # Calculate Y positions with proper spacing
-        current_y = y + h + config.SPACING_CONFIG["foto_to_nama"]
+        current_y = y + h + config.SPACING_CONFIG["foto_to_nama"] + custom_name_offset_y
 
         # Draw nama
         text_height = draw_text_with_spacing(
             draw, nama, current_y, center_x, w,
-            fonts["nama"], config.FONT_CONFIG["nama"]["letter_spacing"]
+            font_nama, config.FONT_CONFIG["nama"]["letter_spacing"]
         )
         current_y += text_height + config.SPACING_CONFIG["nama_to_departemen"]
 

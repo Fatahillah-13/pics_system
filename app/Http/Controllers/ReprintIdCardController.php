@@ -375,4 +375,182 @@ class ReprintIdCardController extends Controller
             'serviceStatus' => $this->printingService->healthCheck(),
         ]);
     }
+
+    /**
+     * Get all available card templates
+     */
+    public function getTemplates(): JsonResponse
+    {
+        $templates = CardTemplate::select('id', 'name', 'template_path', 'description', 'ctpat')
+            ->orderBy('name')
+            ->get()
+            ->map(fn($t) => [
+                'value' => $t->template_path,
+                'label' => $t->name,
+                'description' => $t->description ?? '',
+                'ctpat' => $t->ctpat,
+            ]);
+
+        return response()->json($templates);
+    }
+
+    /**
+     * Store custom reprint with manual options
+     */
+    public function storeCustom(Request $request)
+    {
+        $validated = $request->validate([
+            'cards' => 'required|array|min:1|max:50',
+            'cards.*.name' => 'required|string',
+            'cards.*.employee_id' => 'required|string',
+            'cards.*.department' => 'nullable|string',
+            'cards.*.job_level' => 'nullable|string',
+            'cards.*.custom_template' => 'sometimes|string', // For Korean manual input
+            'cards.*.photo_base64' => 'sometimes|string', // Uploaded photo in base64
+
+            // Custom options
+            'options.bypass_format' => 'sometimes|boolean',
+            'options.custom_template' => 'sometimes|string',
+            'options.name_offset_y' => 'sometimes|integer',
+            'options.custom_font_size' => 'sometimes|integer',
+            'options.preset' => 'sometimes|string|in:korean,long-name',
+        ]);
+
+        $options = $validated['options'] ?? [];
+
+        // Apply preset configurations
+        if (isset($options['preset'])) {
+            $options = $this->applyPreset($options['preset'], $options);
+        }
+
+        $cards = collect($validated['cards'])->map(function ($card) use ($options) {
+            $card['department'] = $this->normalizeDepartment($card['department'] ?? '');
+
+            // Check if uploaded photo exists (for Korean employees)
+            if (!empty($card['photo_base64'])) {
+                // Photo will be handled as base64 string by Python service
+                $photoFilename = null;
+                $photoBase64 = $card['photo_base64'];
+            } else {
+                // Resolve photo from API or DB (for Indonesian employees)
+                $networkPhoto = $this->resolvePhotoFromApi($card['employee_id']);
+                $photoFilename = $networkPhoto
+                    ?? Candidate::where('nik', $card['employee_id'])->value('image_path')
+                    ?? ($card['employee_id'] . '.jpg');
+                $photoBase64 = null;
+            }
+
+            // Determine template
+            // Priority: card-specific template (for Korean manual input) > global option > auto-select
+            $cardTemplate = $card['custom_template'] ?? $options['custom_template'] ?? null;
+
+            if (!$cardTemplate) {
+                // Auto-select based on department/joblevel if not manually selected
+                $candidate = Candidate::with(['joblevel', 'department'])
+                    ->where('nik', $card['employee_id'])
+                    ->first();
+
+                if ($candidate) {
+                    $template = CardTemplate::findForCandidate(
+                        $candidate->joblevel_id,
+                        $candidate->department_id
+                    );
+                    $cardTemplate = $template?->template_path ?? 'templates/default_template.png';
+                } else {
+                    $cardTemplate = 'templates/default_template.png';
+                }
+            }
+
+            return [
+                'name' => $card['name'],
+                'department' => $card['department'] ?? '',
+                'job_level' => $card['job_level'] ?? '',
+                'employee_id' => $card['employee_id'],
+                'photo_filename' => $photoFilename,
+                'photo_base64' => $photoBase64,
+                'card_template' => $cardTemplate,
+
+                // Custom parameters for Python service
+                'bypass_format' => $options['bypass_format'] ?? false,
+                'custom_name_offset_y' => $options['name_offset_y'] ?? 0,
+                'custom_font_size' => $options['custom_font_size'] ?? null,
+            ];
+        })->toArray();
+
+        try {
+            // Check if service is available
+            if (!$this->printingService->healthCheck()) {
+                return back()->with('error', 'Service cetak ID Card tidak tersedia. Silakan hubungi administrator.');
+            }
+
+            // Print ID cards with custom options
+            $result = $this->printingService->printCustomCards($cards);
+
+            // Check if printing was successful
+            if (isset($result[0]['status']) && $result[0]['status'] === 'success') {
+                $pdfUrl = $result[0]['combined_output'];
+                $totalCards = $result[0]['total_idcards'];
+                $totalErrors = $result[0]['total_errors'] ?? 0;
+
+                Log::info('Custom ID Cards printed successfully', [
+                    'total' => $totalCards,
+                    'errors' => $totalErrors,
+                    'pdf_url' => $pdfUrl,
+                    'preset' => $options['preset'] ?? 'custom',
+                ]);
+
+                foreach ($cards as $card) {
+                    $candidate = Candidate::where('nik', $card['employee_id'])->first();
+                    ActivityLog::create([
+                        'candidate_id' => $candidate?->id,
+                        'nik' => $card['employee_id'],
+                        'user_id' => auth()->id(),
+                        'action' => 'reprint_custom',
+                        'notes' => "Custom ID Card untuk {$card['name']} (NIK: {$card['employee_id']}) dicetak (preset: " . ($options['preset'] ?? 'manual') . ")",
+                    ]);
+                }
+
+                return back()->with([
+                    'success' => "Berhasil mencetak {$totalCards} Custom ID Card.",
+                    'pdf_url' => $pdfUrl,
+                    'errors' => $totalErrors > 0 ? "{$totalErrors} kartu gagal dicetak." : null,
+                ]);
+            }
+
+            return back()->with('error', 'Gagal mencetak ID Card. Silakan coba lagi.');
+
+        } catch (\Exception $e) {
+            Log::error('Error printing custom ID cards', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Apply preset configuration
+     */
+    private function applyPreset(string $preset, array $existingOptions): array
+    {
+        $presets = [
+            'korean' => [
+                'bypass_format' => true,
+                'name_offset_y' => 0,
+                'custom_font_size' => null,
+            ],
+            'long-name' => [
+                'bypass_format' => true,
+                'custom_template' => 'templates/template_indonesian_long.png',
+                'name_offset_y' => -5,
+                'custom_font_size' => 18,
+            ],
+        ];
+
+        $presetConfig = $presets[$preset] ?? [];
+
+        // Merge preset with existing options (existing options take precedence)
+        return array_merge($presetConfig, $existingOptions);
+    }
 }

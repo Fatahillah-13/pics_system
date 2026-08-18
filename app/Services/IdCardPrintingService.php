@@ -183,6 +183,81 @@ class IdCardPrintingService
     }
 
     /**
+     * Print custom ID cards with manual options (bypass formatting, custom templates, etc.)
+     *
+     * @param  array  $cards
+     */
+    public function printCustomCards(array $cards): array
+    {
+        $formattedCandidates = collect($cards)->map(function ($card) {
+            // Check if name formatting should be bypassed
+            $name = isset($card['bypass_format']) && $card['bypass_format'] === true
+                ? $card['name']
+                : $this->formatName($card['name']);
+
+            $formatted = [
+                'name' => $name,
+                'department' => $card['department'] ?? '',
+                'job_level' => $card['job_level'] ?? '',
+                'employee_id' => $card['employee_id'] ?? '',
+                'card_template' => $card['card_template'] ?? 'templates/default_template.png',
+            ];
+
+            // Handle photo: either base64 upload or filename
+            if (!empty($card['photo_base64'])) {
+                $formatted['photo_base64'] = $card['photo_base64'];
+                $formatted['photo_filename'] = null;
+            } else {
+                $formatted['photo_filename'] = $card['photo_filename'] ?? '';
+            }
+
+            // Add custom parameters if present
+            if (isset($card['custom_name_offset_y'])) {
+                $formatted['custom_name_offset_y'] = $card['custom_name_offset_y'];
+            }
+            if (isset($card['custom_font_size'])) {
+                $formatted['custom_font_size'] = $card['custom_font_size'];
+            }
+
+            return $formatted;
+        })->toArray();
+
+        Log::info('Sending custom print request to ID Card Service', [
+            'count' => count($formattedCandidates),
+            'service_url' => $this->serviceUrl,
+            'has_custom_params' => collect($formattedCandidates)->contains(function ($card) {
+                return isset($card['custom_name_offset_y']) || isset($card['custom_font_size']);
+            }),
+        ]);
+
+        try {
+            $response = Http::timeout($this->timeout)
+                ->post("{$this->serviceUrl}/print", $formattedCandidates);
+
+            if ($response->failed()) {
+                throw new Exception("ID Card service returned error: {$response->status()}");
+            }
+
+            $result = $response->json();
+
+            Log::info('Custom ID Card Service response received', [
+                'success' => isset($result[0]['status']) && $result[0]['status'] === 'success',
+                'total' => $result[0]['total_idcards'] ?? 0,
+            ]);
+
+            return $result;
+
+        } catch (Exception $e) {
+            Log::error('Failed to print custom ID cards', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw new Exception('Gagal mencetak Custom ID Card: '.$e->getMessage());
+        }
+    }
+
+    /**
      * Get service configuration
      */
     public function getConfig(): array

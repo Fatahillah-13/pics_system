@@ -11,8 +11,8 @@ class Config:
     PORT = int(os.getenv('PORT', 5000))
 
     # Laravel Integration
-    LARAVEL_PUBLIC_PATH = os.getenv('LARAVEL_PUBLIC_PATH', r'D:\sistem\pics_system\public')
-    LARAVEL_STORAGE_PATH = os.getenv('LARAVEL_STORAGE_PATH', r'D:\sistem\pics_system\storage\app\public')
+    LARAVEL_PUBLIC_PATH = os.getenv('LARAVEL_PUBLIC_PATH', r'D:\Coding\pics_system\public')
+    LARAVEL_STORAGE_PATH = os.getenv('LARAVEL_STORAGE_PATH', r'D:\Coding\pics_system\storage\app\public')
     LARAVEL_BASE_URL = os.getenv('LARAVEL_BASE_URL', 'http://10.10.16.125:8000')
 
     # Paths
