@@ -373,6 +373,8 @@ class ReprintIdCardController extends Controller
     {
         return Inertia::render('RePrint/CustomPrint', [
             'serviceStatus' => $this->printingService->healthCheck(),
+            'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
+            'joblevels' => Joblevel::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
