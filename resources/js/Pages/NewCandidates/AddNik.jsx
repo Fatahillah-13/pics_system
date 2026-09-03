@@ -1,7 +1,16 @@
-﻿import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Edit2, Trash2 } from 'lucide-react';
+﻿import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import { Head, router, usePage } from "@inertiajs/react";
+import { useState } from "react";
+import {
+    Search,
+    ChevronDown,
+    ChevronUp,
+    Edit2,
+    Trash2,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
+} from "lucide-react";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -11,107 +20,143 @@ const ITEMS_PER_PAGE = 10;
  * Example: 2024-12-07 â†’ "2412"
  */
 const getPrefix = (candidate) => {
-    if (!candidate.first_working_day) return '';
-    const [yearStr, monthStr] = candidate.first_working_day.split('-');
-    return yearStr.slice(2) + monthStr + '0';
+    if (!candidate.first_working_day) return "";
+    const [yearStr, monthStr] = candidate.first_working_day.split("-");
+    return yearStr.slice(2) + monthStr + "0";
 };
 
 export default function AddNik({ candidates }) {
     const { flash, auth } = usePage().props;
     const userPermissions = auth?.user?.permissions ?? [];
     const can = (perm) => userPermissions.includes(perm);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState("");
     const [nikSuffixes, setNikSuffixes] = useState({});
     const [saving, setSaving] = useState(null);
     const [savingAll, setSavingAll] = useState(false);
     const [errors, setErrors] = useState({});
-    const [bulkError, setBulkError] = useState('');
+    const [bulkError, setBulkError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [bulkStartNumber, setBulkStartNumber] = useState('');
+    const [bulkStartNumber, setBulkStartNumber] = useState("");
     const [showBulk, setShowBulk] = useState(false);
-    const [bulkPrefix, setBulkPrefix] = useState('');
+    const [bulkPrefix, setBulkPrefix] = useState("");
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [nameSort, setNameSort] = useState(null);
 
-    const filteredCandidates = candidates.filter((c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.department?.name && c.department.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (c.joblevel?.name && c.joblevel.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredCandidates = candidates.filter(
+        (c) =>
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (c.department?.name &&
+                c.department.name
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase())) ||
+            (c.joblevel?.name &&
+                c.joblevel.name
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase())),
     );
 
-    const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / ITEMS_PER_PAGE));
+    // const sortedCandidates = [...filteredCandidates].sort((a, b) => {
+    //     if (!nameSort) return 0;
+
+    //     const result = a.name.localeCompare(b.name, "id", {
+    //         sensitivity: "base",
+    //     });
+
+    //     return nameSort === "asc" ? result : -result;
+    // });
+
+    const sortedCandidates = nameSort
+        ? [...filteredCandidates].sort((a, b) => {
+              const result = a.name.localeCompare(b.name, "id", {
+                  sensitivity: "base",
+              });
+              return nameSort === "asc" ? result : -result;
+          })
+        : filteredCandidates;
+
+    const totalPages = Math.max(
+        1,
+        Math.ceil(sortedCandidates.length / ITEMS_PER_PAGE),
+    );
+
     const safePage = Math.min(currentPage, totalPages);
-    const paginatedCandidates = filteredCandidates.slice(
+
+    const paginatedCandidates = sortedCandidates.slice(
         (safePage - 1) * ITEMS_PER_PAGE,
-        safePage * ITEMS_PER_PAGE
+        safePage * ITEMS_PER_PAGE,
     );
 
     // Unique prefixes from all filtered candidates, sorted
-    const availablePrefixes = [...new Set(
-        filteredCandidates
-            .map((c) => getPrefix(c))
-            .filter((p) => p !== '')
-    )].sort();
+    const availablePrefixes = [
+        ...new Set(
+            filteredCandidates.map((c) => getPrefix(c)).filter((p) => p !== ""),
+        ),
+    ].sort();
 
     const handleSuffixChange = (id, value) => {
-        const numeric = value.replace(/\D/g, '');
+        const numeric = value.replace(/\D/g, "");
         setNikSuffixes((prev) => ({ ...prev, [id]: numeric }));
         if (errors[id]) setErrors((prev) => ({ ...prev, [id]: null }));
     };
 
     const applyBulkInput = () => {
-        const startNum = parseInt(bulkStartNumber.replace(/\D/g, ''), 10);
+        const startNum = parseInt(bulkStartNumber.replace(/\D/g, ""), 10);
         if (isNaN(startNum)) return;
 
-        const targetCandidates = filteredCandidates.filter(
-            (c) => getPrefix(c) === bulkPrefix
+        const targetCandidates = sortedCandidates.filter(
+            (c) => getPrefix(c) === bulkPrefix,
         );
 
         const newSuffixes = { ...nikSuffixes };
-        const newErrors  = { ...errors };
+        const newErrors = { ...errors };
         targetCandidates.forEach((candidate, index) => {
             newSuffixes[candidate.id] = String(startNum + index);
             delete newErrors[candidate.id];
         });
         setNikSuffixes(newSuffixes);
         setErrors(newErrors);
-        setBulkStartNumber('');
+        setBulkStartNumber("");
     };
 
     const handleSave = (candidate) => {
         const prefix = getPrefix(candidate);
-        const suffix = (nikSuffixes[candidate.id] ?? '').trim();
+        const suffix = (nikSuffixes[candidate.id] ?? "").trim();
         if (!suffix) {
-            setErrors((prev) => ({ ...prev, [candidate.id]: 'Nomor akhir NIK tidak boleh kosong.' }));
+            setErrors((prev) => ({
+                ...prev,
+                [candidate.id]: "Nomor akhir NIK tidak boleh kosong.",
+            }));
             return;
         }
 
         setSaving(candidate.id);
         router.post(
-            route('candidates.uploadNik.store'),
+            route("candidates.uploadNik.store"),
             { candidate_id: candidate.id, nik: prefix + suffix },
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    setNikSuffixes((prev) => ({ ...prev, [candidate.id]: '' }));
+                    setNikSuffixes((prev) => ({ ...prev, [candidate.id]: "" }));
                     setSaving(null);
                 },
                 onError: (errs) => {
                     setSaving(null);
-                    const msg = errs?.nik ?? errs?.candidate_id ?? 'Terjadi kesalahan.';
+                    const msg =
+                        errs?.nik ?? errs?.candidate_id ?? "Terjadi kesalahan.";
                     setErrors((prev) => ({ ...prev, [candidate.id]: msg }));
                 },
-            }
+            },
         );
     };
 
     const pendingCandidates = paginatedCandidates.filter(
-        (c) => (nikSuffixes[c.id] ?? '').trim() !== ''
+        (c) => (nikSuffixes[c.id] ?? "").trim() !== "",
     );
 
     const handleSaveAll = () => {
         if (pendingCandidates.length === 0) return;
-        setBulkError('');
+        setBulkError("");
 
         const payload = pendingCandidates.map((c) => ({
             candidate_id: c.id,
@@ -120,26 +165,31 @@ export default function AddNik({ candidates }) {
 
         setSavingAll(true);
         router.post(
-            route('candidates.uploadNik.storeMany'),
+            route("candidates.uploadNik.storeMany"),
             { data: payload },
             {
                 preserveScroll: true,
                 onSuccess: () => {
                     setSavingAll(false);
                     const cleared = {};
-                    pendingCandidates.forEach((c) => { cleared[c.id] = ''; });
+                    pendingCandidates.forEach((c) => {
+                        cleared[c.id] = "";
+                    });
                     setNikSuffixes((prev) => ({ ...prev, ...cleared }));
                 },
                 onError: (errs) => {
                     setSavingAll(false);
-                    setBulkError(errs?.data ?? 'Terjadi kesalahan saat menyimpan massal.');
+                    setBulkError(
+                        errs?.data ??
+                            "Terjadi kesalahan saat menyimpan massal.",
+                    );
                 },
-            }
+            },
         );
     };
 
     const handleEdit = (candidateId) => {
-        router.get(route('candidates.edit', candidateId), {
+        router.get(route("candidates.edit", candidateId), {
             from: window.location.pathname + window.location.search,
         });
     };
@@ -151,7 +201,7 @@ export default function AddNik({ candidates }) {
     const confirmDelete = () => {
         if (!deleteConfirm) return;
         setDeleting(true);
-        router.delete(route('candidates.destroy', deleteConfirm.id), {
+        router.delete(route("candidates.destroy", deleteConfirm.id), {
             preserveScroll: true,
             onSuccess: () => {
                 setDeleteConfirm(null);
@@ -189,7 +239,8 @@ export default function AddNik({ candidates }) {
                                     Kandidat Belum Memiliki NIK
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-0.5">
-                                    Kandidat di bawah sudah memiliki foto namun belum memiliki NIK.
+                                    Kandidat di bawah sudah memiliki foto namun
+                                    belum memiliki NIK.
                                 </p>
                             </div>
                             <div className="relative w-full sm:w-72">
@@ -214,56 +265,107 @@ export default function AddNik({ candidates }) {
                                 className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
                             >
                                 <span>Input NIK Massal</span>
-                                {showBulk ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                {showBulk ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                )}
                             </button>
                             {showBulk && (
                                 <div className="px-4 pb-4 bg-indigo-50">
                                     {/* Prefix selector */}
                                     <div className="mb-3 pt-3">
                                         <p className="text-xs font-medium text-gray-600 mb-1.5">
-                                            Pilih prefix (tahun+bulan masuk kerja):
+                                            Pilih prefix (tahun+bulan masuk
+                                            kerja):
                                         </p>
                                         {availablePrefixes.length === 0 ? (
                                             <p className="text-xs text-yellow-600">
-                                                Tidak ada kandidat dengan tanggal masuk kerja yang terisi.
+                                                Tidak ada kandidat dengan
+                                                tanggal masuk kerja yang terisi.
                                             </p>
                                         ) : (
                                             <div className="flex flex-wrap gap-2">
-                                                {availablePrefixes.map((prefix) => {
-                                                    const count = filteredCandidates.filter(
-                                                        (c) => getPrefix(c) === prefix
-                                                    ).length;
-                                                    return (
-                                                        <button
-                                                            key={prefix}
-                                                            onClick={() => setBulkPrefix(prefix)}
-                                                            className={`px-3 py-1 rounded-full text-xs font-mono font-medium border transition-colors ${
-                                                                bulkPrefix === prefix
-                                                                    ? 'bg-indigo-600 text-white border-indigo-600'
-                                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
-                                                            }`}
-                                                        >
-                                                            {prefix}
-                                                            <span className={`ml-1.5 ${
-                                                                bulkPrefix === prefix ? 'text-indigo-200' : 'text-gray-400'
-                                                            }`}>
-                                                                ({count})
-                                                            </span>
-                                                        </button>
-                                                    );
-                                                })}
+                                                {availablePrefixes.map(
+                                                    (prefix) => {
+                                                        const count =
+                                                            filteredCandidates.filter(
+                                                                (c) =>
+                                                                    getPrefix(
+                                                                        c,
+                                                                    ) ===
+                                                                    prefix,
+                                                            ).length;
+                                                        return (
+                                                            <button
+                                                                key={prefix}
+                                                                onClick={() =>
+                                                                    setBulkPrefix(
+                                                                        prefix,
+                                                                    )
+                                                                }
+                                                                className={`px-3 py-1 rounded-full text-xs font-mono font-medium border transition-colors ${
+                                                                    bulkPrefix ===
+                                                                    prefix
+                                                                        ? "bg-indigo-600 text-white border-indigo-600"
+                                                                        : "bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:text-indigo-600"
+                                                                }`}
+                                                            >
+                                                                {prefix}
+                                                                <span
+                                                                    className={`ml-1.5 ${
+                                                                        bulkPrefix ===
+                                                                        prefix
+                                                                            ? "text-indigo-200"
+                                                                            : "text-gray-400"
+                                                                    }`}
+                                                                >
+                                                                    ({count})
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    },
+                                                )}
                                             </div>
                                         )}
                                     </div>
 
                                     <p className="text-xs text-gray-500 mb-2">
-                                        Masukkan <span className="font-semibold">nomor urut pertama</span>, sistem akan melanjutkan otomatis
+                                        Masukkan{" "}
+                                        <span className="font-semibold">
+                                            nomor urut pertama
+                                        </span>
+                                        , sistem akan melanjutkan otomatis
                                         {bulkPrefix ? (
-                                            <> untuk {filteredCandidates.filter((c) => getPrefix(c) === bulkPrefix).length} kandidat ber-prefix{' '}
-                                            <span className="font-mono text-indigo-600">{bulkPrefix}</span>.<br />
-                                            Contoh: <span className="font-mono text-gray-700">74300</span> &rarr; NIK:{' '}
-                                            <span className="font-mono text-gray-700">{bulkPrefix}74300, {bulkPrefix}74301, {bulkPrefix}74302, ...</span></>
-                                        ) : ' yang dipilih.'}
+                                            <>
+                                                {" "}
+                                                untuk{" "}
+                                                {
+                                                    filteredCandidates.filter(
+                                                        (c) =>
+                                                            getPrefix(c) ===
+                                                            bulkPrefix,
+                                                    ).length
+                                                }{" "}
+                                                kandidat ber-prefix{" "}
+                                                <span className="font-mono text-indigo-600">
+                                                    {bulkPrefix}
+                                                </span>
+                                                .<br />
+                                                Contoh:{" "}
+                                                <span className="font-mono text-gray-700">
+                                                    74300
+                                                </span>{" "}
+                                                &rarr; NIK:{" "}
+                                                <span className="font-mono text-gray-700">
+                                                    {bulkPrefix}74300,{" "}
+                                                    {bulkPrefix}74301,{" "}
+                                                    {bulkPrefix}74302, ...
+                                                </span>
+                                            </>
+                                        ) : (
+                                            " yang dipilih."
+                                        )}
                                     </p>
 
                                     {bulkError && (
@@ -275,22 +377,36 @@ export default function AddNik({ candidates }) {
                                         type="text"
                                         inputMode="numeric"
                                         value={bulkStartNumber}
-                                        onChange={(e) => setBulkStartNumber(e.target.value.replace(/\D/g, ''))}
-                                        placeholder={bulkPrefix ? 'Nomor urut pertama, contoh: 74300' : 'Pilih prefix terlebih dahulu...'}
+                                        onChange={(e) =>
+                                            setBulkStartNumber(
+                                                e.target.value.replace(
+                                                    /\D/g,
+                                                    "",
+                                                ),
+                                            )
+                                        }
+                                        placeholder={
+                                            bulkPrefix
+                                                ? "Nomor urut pertama, contoh: 74300"
+                                                : "Pilih prefix terlebih dahulu..."
+                                        }
                                         disabled={!bulkPrefix}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                     <div className="flex items-center justify-between mt-2 gap-2">
                                         <span className="text-xs text-gray-400">
                                             {bulkPrefix && bulkStartNumber
-                                                ? `Preview: ${bulkPrefix}${bulkStartNumber}, ${bulkPrefix}${parseInt(bulkStartNumber)+1}, ${bulkPrefix}${parseInt(bulkStartNumber)+2}, ...`
+                                                ? `Preview: ${bulkPrefix}${bulkStartNumber}, ${bulkPrefix}${parseInt(bulkStartNumber) + 1}, ${bulkPrefix}${parseInt(bulkStartNumber) + 2}, ...`
                                                 : bulkPrefix
-                                                    ? `Masukkan nomor urut pertama untuk prefix ${bulkPrefix}`
-                                                    : 'Pilih prefix di atas untuk mulai mengisi'}
+                                                  ? `Masukkan nomor urut pertama untuk prefix ${bulkPrefix}`
+                                                  : "Pilih prefix di atas untuk mulai mengisi"}
                                         </span>
                                         <button
                                             onClick={applyBulkInput}
-                                            disabled={!bulkStartNumber.trim() || !bulkPrefix}
+                                            disabled={
+                                                !bulkStartNumber.trim() ||
+                                                !bulkPrefix
+                                            }
                                             className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Terapkan
@@ -305,136 +421,283 @@ export default function AddNik({ candidates }) {
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">No</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Foto</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                                        <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departemen</th>
-                                        <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenjang</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                                            No
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                                            Foto
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <div className="flex items-center gap-1">
+                                                <span>Nama</span>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setNameSort(
+                                                            (current) => {
+                                                                const nextSort =
+                                                                    current ===
+                                                                    null
+                                                                        ? "asc"
+                                                                        : current ===
+                                                                            "asc"
+                                                                          ? "desc"
+                                                                          : null;
+
+                                                                return nextSort;
+                                                            },
+                                                        );
+                                                        setCurrentPage(1);
+                                                    }}
+                                                    title={
+                                                        nameSort === "asc"
+                                                            ? "Urutkan nama Z-A"
+                                                            : nameSort ===
+                                                                "desc"
+                                                              ? "Hapus pengurutan nama"
+                                                              : "Urutkan nama A-Z"
+                                                    }
+                                                    aria-label={
+                                                        nameSort === "asc"
+                                                            ? "Urutkan nama dari Z ke A"
+                                                            : nameSort ===
+                                                                "desc"
+                                                              ? "Hapus pengurutan nama"
+                                                              : "Urutkan nama dari A ke Z"
+                                                    }
+                                                    className="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                                                >
+                                                    {nameSort === "asc" ? (
+                                                        <ArrowUp className="h-4 w-4" />
+                                                    ) : nameSort === "desc" ? (
+                                                        <ArrowDown className="h-4 w-4" />
+                                                    ) : (
+                                                        <ArrowUpDown className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </th>
+                                        <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Departemen
+                                        </th>
+                                        <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Jenjang
+                                        </th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             NIK
-                                            <span className="ml-1 font-normal normal-case text-gray-400">(prefix + nomor akhir)</span>
+                                            <span className="ml-1 font-normal normal-case text-gray-400">
+                                                (prefix + nomor akhir)
+                                            </span>
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Aksi</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                                            Aksi
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {paginatedCandidates.length === 0 ? (
                                         <tr>
-                                            <td colSpan="7" className="px-4 py-10 text-center text-sm text-gray-500">
+                                            <td
+                                                colSpan="7"
+                                                className="px-4 py-10 text-center text-sm text-gray-500"
+                                            >
                                                 {searchQuery
-                                                    ? 'Tidak ada kandidat yang cocok dengan pencarian.'
-                                                    : 'Semua kandidat sudah memiliki NIK.'}
+                                                    ? "Tidak ada kandidat yang cocok dengan pencarian."
+                                                    : "Semua kandidat sudah memiliki NIK."}
                                             </td>
                                         </tr>
                                     ) : (
-                                        paginatedCandidates.map((candidate, index) => {
-                                            const globalIndex = (safePage - 1) * ITEMS_PER_PAGE + index + 1;
-                                            const isSaving = saving === candidate.id;
-                                            const error = errors[candidate.id];
-                                            const prefix = getPrefix(candidate);
-                                            const suffix = nikSuffixes[candidate.id] ?? '';
-                                            return (
-                                                <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="px-4 py-3 text-sm text-gray-500">{globalIndex}</td>
-                                                    <td className="px-4 py-3">
-                                                        <img
-                                                            src={`/storage/${candidate.image_path}`}
-                                                            alt={candidate.name}
-                                                            className="h-12 w-9 object-cover rounded shadow-sm"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                        {candidate.name}
-                                                        <div className="sm:hidden text-xs text-gray-500 mt-0.5">
-                                                            {candidate.department?.name || '-'}
-                                                        </div>
-                                                    </td>
-                                                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
-                                                        {candidate.department?.name || '-'}
-                                                    </td>
-                                                    <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-500">
-                                                        {candidate.joblevel?.name || '-'}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {can('upload nik') ? (
-                                                        <div>
-                                                            <div className="flex items-stretch">
-                                                                {/* Auto-generated prefix */}
-                                                                {prefix ? (
-                                                                    <span
-                                                                        title="Tahun+bulan masuk kerja (otomatis)"
-                                                                        className="flex items-center px-2 py-1.5 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-sm font-mono text-gray-600 select-none whitespace-nowrap"
-                                                                    >
-                                                                        {prefix}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span
-                                                                        title="Tanggal masuk kerja belum diisi"
-                                                                        className="flex items-center px-2 py-1.5 bg-yellow-50 border border-r-0 border-yellow-300 rounded-l-md text-xs text-yellow-600 select-none whitespace-nowrap"
-                                                                    >
-                                                                        ?
-                                                                    </span>
-                                                                )}
-                                                                {/* User-input suffix */}
-                                                                <input
-                                                                    type="text"
-                                                                    inputMode="numeric"
-                                                                    placeholder="nomor akhir..."
-                                                                    value={suffix}
-                                                                    onChange={(e) => handleSuffixChange(candidate.id, e.target.value)}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') handleSave(candidate);
-                                                                    }}
-                                                                    disabled={isSaving}
-                                                                    className={`w-32 px-2 py-1.5 border rounded-r-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 disabled:opacity-50 ${
-                                                                        error ? 'border-red-400' : 'border-gray-300'
-                                                                    }`}
-                                                                />
+                                        paginatedCandidates.map(
+                                            (candidate, index) => {
+                                                const globalIndex =
+                                                    (safePage - 1) *
+                                                        ITEMS_PER_PAGE +
+                                                    index +
+                                                    1;
+                                                const isSaving =
+                                                    saving === candidate.id;
+                                                const error =
+                                                    errors[candidate.id];
+                                                const prefix =
+                                                    getPrefix(candidate);
+                                                const suffix =
+                                                    nikSuffixes[candidate.id] ??
+                                                    "";
+                                                return (
+                                                    <tr
+                                                        key={candidate.id}
+                                                        className="hover:bg-gray-50 transition-colors"
+                                                    >
+                                                        <td className="px-4 py-3 text-sm text-gray-500">
+                                                            {globalIndex}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <img
+                                                                src={`/storage/${candidate.image_path}`}
+                                                                alt={
+                                                                    candidate.name
+                                                                }
+                                                                className="h-12 w-9 object-cover rounded shadow-sm"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                            {candidate.name}
+                                                            <div className="sm:hidden text-xs text-gray-500 mt-0.5">
+                                                                {candidate
+                                                                    .department
+                                                                    ?.name ||
+                                                                    "-"}
                                                             </div>
-                                                            {/* Live preview of full NIK */}
-                                                            {suffix && (
-                                                                <p className="text-xs text-gray-400 mt-0.5 font-mono">
-                                                                    NIK: {prefix}{suffix}
-                                                                </p>
+                                                        </td>
+                                                        <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500">
+                                                            {candidate
+                                                                .department
+                                                                ?.name || "-"}
+                                                        </td>
+                                                        <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-500">
+                                                            {candidate.joblevel
+                                                                ?.name || "-"}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            {can(
+                                                                "upload nik",
+                                                            ) ? (
+                                                                <div>
+                                                                    <div className="flex items-stretch">
+                                                                        {/* Auto-generated prefix */}
+                                                                        {prefix ? (
+                                                                            <span
+                                                                                title="Tahun+bulan masuk kerja (otomatis)"
+                                                                                className="flex items-center px-2 py-1.5 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-sm font-mono text-gray-600 select-none whitespace-nowrap"
+                                                                            >
+                                                                                {
+                                                                                    prefix
+                                                                                }
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span
+                                                                                title="Tanggal masuk kerja belum diisi"
+                                                                                className="flex items-center px-2 py-1.5 bg-yellow-50 border border-r-0 border-yellow-300 rounded-l-md text-xs text-yellow-600 select-none whitespace-nowrap"
+                                                                            >
+                                                                                ?
+                                                                            </span>
+                                                                        )}
+                                                                        {/* User-input suffix */}
+                                                                        <input
+                                                                            type="text"
+                                                                            inputMode="numeric"
+                                                                            placeholder="nomor akhir..."
+                                                                            value={
+                                                                                suffix
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                handleSuffixChange(
+                                                                                    candidate.id,
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                )
+                                                                            }
+                                                                            onKeyDown={(
+                                                                                e,
+                                                                            ) => {
+                                                                                if (
+                                                                                    e.key ===
+                                                                                    "Enter"
+                                                                                )
+                                                                                    handleSave(
+                                                                                        candidate,
+                                                                                    );
+                                                                            }}
+                                                                            disabled={
+                                                                                isSaving
+                                                                            }
+                                                                            className={`w-32 px-2 py-1.5 border rounded-r-md text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 disabled:opacity-50 ${
+                                                                                error
+                                                                                    ? "border-red-400"
+                                                                                    : "border-gray-300"
+                                                                            }`}
+                                                                        />
+                                                                    </div>
+                                                                    {/* Live preview of full NIK */}
+                                                                    {suffix && (
+                                                                        <p className="text-xs text-gray-400 mt-0.5 font-mono">
+                                                                            NIK:{" "}
+                                                                            {
+                                                                                prefix
+                                                                            }
+                                                                            {
+                                                                                suffix
+                                                                            }
+                                                                        </p>
+                                                                    )}
+                                                                    {error && (
+                                                                        <p className="text-xs text-red-500 mt-1">
+                                                                            {
+                                                                                error
+                                                                            }
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-sm text-gray-400">
+                                                                    -
+                                                                </span>
                                                             )}
-                                                            {error && (
-                                                                <p className="text-xs text-red-500 mt-1">{error}</p>
-                                                            )}
-                                                        </div>
-                                                        ) : (
-                                                            <span className="text-sm text-gray-400">-</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <div className="flex items-center gap-1.5">
-                                                            {can('upload nik') && (
-                                                            <button
-                                                                onClick={() => handleSave(candidate)}
-                                                                disabled={isSaving || !suffix}
-                                                                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                                {isSaving ? 'Menyimpan...' : 'Simpan'}
-                                                            </button>
-                                                            )}
-                                                            <button
-                                                                onClick={() => handleEdit(candidate.id)}
-                                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                                                                title="Edit kandidat"
-                                                            >
-                                                                <Edit2 className="h-4 w-4" />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDelete(candidate)}
-                                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                                                title="Hapus kandidat"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center gap-1.5">
+                                                                {can(
+                                                                    "upload nik",
+                                                                ) && (
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleSave(
+                                                                                candidate,
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            isSaving ||
+                                                                            !suffix
+                                                                        }
+                                                                        className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        {isSaving
+                                                                            ? "Menyimpan..."
+                                                                            : "Simpan"}
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleEdit(
+                                                                            candidate.id,
+                                                                        )
+                                                                    }
+                                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                                                    title="Edit kandidat"
+                                                                >
+                                                                    <Edit2 className="h-4 w-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleDelete(
+                                                                            candidate,
+                                                                        )
+                                                                    }
+                                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                                    title="Hapus kandidat"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            },
+                                        )
                                     )}
                                 </tbody>
                             </table>
@@ -443,26 +706,65 @@ export default function AddNik({ candidates }) {
                         {/* Footer: count + save all + pagination */}
                         <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-2 text-xs text-gray-500">
                             <div className="flex items-center gap-3 flex-wrap">
-                                <span>Total: {filteredCandidates.length} kandidat</span>
-                                {can('upload nik') && pendingCandidates.length > 0 && (
-                                    <button
-                                        onClick={handleSaveAll}
-                                        disabled={savingAll}
-                                        className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {savingAll
-                                            ? 'Menyimpan...'
-                                            : `Simpan Semua (${pendingCandidates.length})`}
-                                    </button>
-                                )}
+                                <span>
+                                    Total: {filteredCandidates.length} kandidat
+                                </span>
+                                {can("upload nik") &&
+                                    pendingCandidates.length > 0 && (
+                                        <button
+                                            onClick={handleSaveAll}
+                                            disabled={savingAll}
+                                            className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {savingAll
+                                                ? "Menyimpan..."
+                                                : `Simpan Semua (${pendingCandidates.length})`}
+                                        </button>
+                                    )}
                             </div>
                             {totalPages > 1 && (
                                 <div className="flex items-center gap-1">
-                                    <button onClick={() => setCurrentPage(1)} disabled={safePage === 1} className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-100 transition-colors">Â«</button>
-                                    <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-100 transition-colors">â€¹</button>
-                                    <span className="px-2 text-gray-600">{safePage} / {totalPages}</span>
-                                    <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-100 transition-colors">â€º</button>
-                                    <button onClick={() => setCurrentPage(totalPages)} disabled={safePage === totalPages} className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-100 transition-colors">Â»</button>
+                                    <button
+                                        onClick={() => setCurrentPage(1)}
+                                        disabled={safePage === 1}
+                                        className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                    >
+                                        Â«
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            setCurrentPage((p) =>
+                                                Math.max(1, p - 1),
+                                            )
+                                        }
+                                        disabled={safePage === 1}
+                                        className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                    >
+                                        â€¹
+                                    </button>
+                                    <span className="px-2 text-gray-600">
+                                        {safePage} / {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() =>
+                                            setCurrentPage((p) =>
+                                                Math.min(totalPages, p + 1),
+                                            )
+                                        }
+                                        disabled={safePage === totalPages}
+                                        className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                    >
+                                        â€º
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            setCurrentPage(totalPages)
+                                        }
+                                        disabled={safePage === totalPages}
+                                        className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                                    >
+                                        Â»
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -506,7 +808,7 @@ export default function AddNik({ candidates }) {
                                 disabled={deleting}
                                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
                             >
-                                {deleting ? 'Menghapus...' : 'Hapus'}
+                                {deleting ? "Menghapus..." : "Hapus"}
                             </button>
                         </div>
                     </div>
