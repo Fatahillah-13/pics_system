@@ -56,15 +56,24 @@ export default function AddNik({ candidates }) {
                     .includes(searchQuery.toLowerCase())),
     );
 
-    const sortedCandidates = [...filteredCandidates].sort((a, b) => {
-        if (!nameSort) return 0;
+    // const sortedCandidates = [...filteredCandidates].sort((a, b) => {
+    //     if (!nameSort) return 0;
 
-        const result = a.name.localeCompare(b.name, "id", {
-            sensitivity: "base",
-        });
+    //     const result = a.name.localeCompare(b.name, "id", {
+    //         sensitivity: "base",
+    //     });
 
-        return nameSort === "asc" ? result : -result;
-    });
+    //     return nameSort === "asc" ? result : -result;
+    // });
+
+    const sortedCandidates = nameSort
+        ? [...filteredCandidates].sort((a, b) => {
+              const result = a.name.localeCompare(b.name, "id", {
+                  sensitivity: "base",
+              });
+              return nameSort === "asc" ? result : -result;
+          })
+        : filteredCandidates;
 
     const totalPages = Math.max(
         1,
