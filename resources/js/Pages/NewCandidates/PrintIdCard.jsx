@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Search, Printer, AlertCircle, CheckCircle, Download, Filter, Edit2, Trash2 } from 'lucide-react';
+import { Search, Printer, AlertCircle, CheckCircle, Download, Filter, Edit2, Trash2, Upload, FileSpreadsheet, X } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -15,6 +15,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
     const [ctpatSelected, setCtpatSelected] = useState(new Set());
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [showBulkModal, setShowBulkModal] = useState(false);
 
     const handleFilterChange = (filter) => {
         router.get(
@@ -243,6 +244,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                 )}
                                 <button
                                     type="button"
+                                    onClick={() => setShowBulkModal(true)}
                                     className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors shrink-0"
                                 >
                                     <Edit2 className="h-4 w-4" />
@@ -484,6 +486,82 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
                             >
                                 {deleting ? 'Menghapus...' : 'Hapus'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Update Modal */}
+            {showBulkModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 relative">
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-5">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-green-50 rounded-lg text-green-600">
+                                    <FileSpreadsheet className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                        Bulk Update Kandidat
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        Unggah berkas Excel untuk memperbarui data kandidat secara massal
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowBulkModal(false)}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-5">
+                            {/* Download Template Section */}
+                            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-800">Template Excel</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        Unduh format template resmi untuk pengisian data kandidat.
+                                    </p>
+                                </div>
+                                <a
+                                    href={route('candidates.template')}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 text-xs font-medium rounded-md shadow-sm transition-colors shrink-0"
+                                >
+                                    <Download className="h-4 w-4 text-green-600" />
+                                    <span>Download Template</span>
+                                </a>
+                            </div>
+
+                            {/* Excel File Input Section */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    Upload File Excel
+                                </label>
+                                <input
+                                    type="file"
+                                    accept=".xlsx, .xls, .csv"
+                                    className="block w-full text-xs text-gray-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer border border-gray-300 rounded-lg p-1.5 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Modal Footer Actions */}
+                        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                            <button
+                                onClick={() => setShowBulkModal(false)}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={() => setShowBulkModal(false)}
+                                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
+                            >
+                                Upload / Simpan
                             </button>
                         </div>
                     </div>
