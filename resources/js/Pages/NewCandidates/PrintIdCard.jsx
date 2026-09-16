@@ -302,14 +302,16 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                         {printing ? 'Mencetak...' : `Cetak (${selected.length})`}
                                     </button>
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={() => setShowBulkModal(true)}
-                                    className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors shrink-0"
-                                >
-                                    <Edit2 className="h-4 w-4" />
-                                    <span>Bulk Update</span>
-                                </button>
+{(auth?.user?.permissions ?? []).includes('edit candidates') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowBulkModal(true)}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors shrink-0"
+                                    >
+                                        <Edit2 className="h-4 w-4" />
+                                        <span>Bulk Update</span>
+                                    </button>
+                                )}
                                 <div className="relative w-full sm:w-72">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <input
