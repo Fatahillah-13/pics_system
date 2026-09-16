@@ -1,9 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Search, Printer, AlertCircle, CheckCircle, Download, Filter, Edit2, Trash2 } from 'lucide-react';
+import { Search, Printer, AlertCircle, CheckCircle, Download, Filter, Edit2, Trash2, Upload, FileSpreadsheet, X } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
+const BULK_ITEMS_PER_PAGE = 10;
 
 export default function PrintIdCard({ candidates, serviceStatus, currentFilter = 'unprinted' }) {
     const { flash, auth } = usePage().props;
@@ -15,6 +16,16 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
     const [ctpatSelected, setCtpatSelected] = useState(new Set());
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkStep, setBulkStep] = useState('upload'); // 'upload' | 'review'
+    const [bulkFile, setBulkFile] = useState(null);
+    const [bulkChanges, setBulkChanges] = useState([]);
+    const [bulkNotFound, setBulkNotFound] = useState([]);
+    const [bulkInvalidValues, setBulkInvalidValues] = useState([]);
+    const [bulkPage, setBulkPage] = useState(1);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkSubmitting, setBulkSubmitting] = useState(false);
+    const [bulkError, setBulkError] = useState(null);
 
     const handleFilterChange = (filter) => {
         router.get(
@@ -128,6 +139,56 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
         });
     };
 
+    const resetBulkModal = () => {
+        setShowBulkModal(false);
+        setBulkStep('upload');
+        setBulkFile(null);
+        setBulkChanges([]);
+        setBulkNotFound([]);
+        setBulkInvalidValues([]);
+        setBulkPage(1);
+        setBulkError(null);
+    };
+
+    const handleBulkPreview = async () => {
+        if (!bulkFile || bulkLoading) return;
+        setBulkLoading(true);
+        setBulkError(null);
+
+        const fd = new FormData();
+        fd.append('file', bulkFile);
+
+        try {
+            const res = await window.axios.post(route('candidates.bulkEdit.preview'), fd, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setBulkChanges(res.data.changes ?? []);
+            setBulkNotFound(res.data.not_found ?? []);
+            setBulkInvalidValues(res.data.invalid_values ?? []);
+            setBulkPage(1);
+            setBulkStep('review');
+        } catch (err) {
+            setBulkError(err.response?.data?.error || 'Gagal memproses file.');
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+    const handleBulkSubmit = () => {
+        if (bulkSubmitting || bulkChanges.length === 0) return;
+        setBulkSubmitting(true);
+        router.post(
+            route('candidates.bulkEdit.store'),
+            { changes: bulkChanges },
+            {
+                preserveScroll: true,
+                onSuccess: () => resetBulkModal(),
+                onError: () => setBulkError('Gagal menyimpan perubahan.'),
+                onFinish: () => setBulkSubmitting(false),
+            }
+        );
+    };
+
     return (
         <AuthenticatedLayout
             header={
@@ -239,6 +300,16 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                     >
                                         <Printer className="h-4 w-4" />
                                         {printing ? 'Mencetak...' : `Cetak (${selected.length})`}
+                                    </button>
+                                )}
+{(auth?.user?.permissions ?? []).includes('edit candidates') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowBulkModal(true)}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors shrink-0"
+                                    >
+                                        <Edit2 className="h-4 w-4" />
+                                        <span>Bulk Update</span>
                                     </button>
                                 )}
                                 <div className="relative w-full sm:w-72">
@@ -479,6 +550,227 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                 {deleting ? 'Menghapus...' : 'Hapus'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Update Modal */}
+            {showBulkModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className={`bg-white rounded-xl shadow-xl w-full p-6 relative ${bulkStep === 'review' ? 'max-w-3xl' : 'max-w-lg'}`}>
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-5">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-green-50 rounded-lg text-green-600">
+                                    <FileSpreadsheet className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                        Bulk Update Kandidat
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        {bulkStep === 'upload'
+                                            ? 'Unggah berkas Excel untuk memperbarui data kandidat secara massal'
+                                            : 'Periksa perubahan sebelum disimpan'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={resetBulkModal}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {bulkError && (
+                            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                {bulkError}
+                            </div>
+                        )}
+
+                        {bulkStep === 'upload' && (
+                            <>
+                                <div className="space-y-5">
+                                    {/* Download Template Section */}
+                                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-800">Template Excel</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                Unduh data kandidat siap-cetak saat ini untuk diedit.
+                                            </p>
+                                        </div>
+                                        <a
+                                            href={route('candidates.bulkEdit.template')}
+                                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 text-xs font-medium rounded-md shadow-sm transition-colors shrink-0"
+                                        >
+                                            <Download className="h-4 w-4 text-green-600" />
+                                            <span>Download Template</span>
+                                        </a>
+                                    </div>
+
+                                    {/* Excel File Input Section */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                            Upload File Excel
+                                        </label>
+                                        <input
+                                            type="file"
+                                            accept=".xlsx, .xls, .csv"
+                                            onChange={(e) => setBulkFile(e.target.files?.[0] ?? null)}
+                                            className="block w-full text-xs text-gray-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer border border-gray-300 rounded-lg p-1.5 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Modal Footer Actions */}
+                                <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                                    <button
+                                        onClick={resetBulkModal}
+                                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        onClick={handleBulkPreview}
+                                        disabled={!bulkFile || bulkLoading}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {bulkLoading ? 'Memproses...' : 'Lihat Perubahan'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {bulkStep === 'review' && (
+                            <>
+                                <div className="space-y-4">
+                                    {bulkChanges.length === 0 ? (
+                                        <p className="text-sm text-gray-500 py-6 text-center">
+                                            Tidak ada perubahan data yang terdeteksi.
+                                        </p>
+                                    ) : (
+                                        <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+                                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                                <thead className="bg-gray-50 sticky top-0 z-10">
+                                                    <tr>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">NIK</th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Field</th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lama</th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Baru</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {bulkChanges
+                                                        .slice((bulkPage - 1) * BULK_ITEMS_PER_PAGE, bulkPage * BULK_ITEMS_PER_PAGE)
+                                                        .map((change, changeIdx) =>
+                                                            Object.entries(change.diff).map(([field, value], i) => (
+                                                                <tr
+                                                                    key={`${change.candidate_id}-${field}`}
+                                                                    className={changeIdx % 2 === 1 ? 'bg-gray-50/60' : undefined}
+                                                                >
+                                                                    <td className="px-3 py-2 font-mono text-gray-700 align-top">
+                                                                        {change.nik}
+                                                                    </td>
+                                                                    <td className="px-3 py-2 text-gray-500 capitalize">{field.replace('_', ' ')}</td>
+                                                                    <td className="px-3 py-2 text-gray-500">{value.from || '-'}</td>
+                                                                    <td className="px-3 py-2 text-green-700 font-medium">{value.to}</td>
+                                                                </tr>
+                                                            ))
+                                                        )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+
+                                    {bulkChanges.length > BULK_ITEMS_PER_PAGE && (
+                                        <div className="flex items-center justify-between text-xs text-gray-600">
+                                            <span>
+                                                Halaman {bulkPage} dari {Math.ceil(bulkChanges.length / BULK_ITEMS_PER_PAGE)} &mdash; {bulkChanges.length} kandidat
+                                            </span>
+                                            <div className="flex gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setBulkPage((p) => Math.max(1, p - 1))}
+                                                    disabled={bulkPage === 1}
+                                                    className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                >
+                                                    &laquo;
+                                                </button>
+                                                {Array.from(
+                                                    { length: Math.ceil(bulkChanges.length / BULK_ITEMS_PER_PAGE) },
+                                                    (_, i) => i + 1
+                                                ).map((page) => (
+                                                    <button
+                                                        type="button"
+                                                        key={page}
+                                                        onClick={() => setBulkPage(page)}
+                                                        className={`px-2.5 py-1 rounded border ${
+                                                            page === bulkPage
+                                                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                                                : 'border-gray-300 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        {page}
+                                                    </button>
+                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setBulkPage((p) =>
+                                                            Math.min(Math.ceil(bulkChanges.length / BULK_ITEMS_PER_PAGE), p + 1)
+                                                        )
+                                                    }
+                                                    disabled={bulkPage === Math.ceil(bulkChanges.length / BULK_ITEMS_PER_PAGE)}
+                                                    className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                >
+                                                    &raquo;
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {bulkNotFound.length > 0 && (
+                                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
+                                            <p className="font-medium mb-1">NIK tidak ditemukan ({bulkNotFound.length}):</p>
+                                            <p>{bulkNotFound.map((n) => n.nik).join(', ')}</p>
+                                        </div>
+                                    )}
+
+                                    {bulkInvalidValues.length > 0 && (
+                                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+                                            <p className="font-medium mb-1">
+                                                Nilai tidak dikenali, perubahan ini diabaikan ({bulkInvalidValues.length}):
+                                            </p>
+                                            <ul className="list-disc list-inside space-y-0.5">
+                                                {bulkInvalidValues.map((v, i) => (
+                                                    <li key={i}>
+                                                        Baris {v.row} (NIK {v.nik}): {v.field === 'job_level' ? 'Job Level' : 'Department'} &quot;{v.value}&quot; tidak ditemukan
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Modal Footer Actions */}
+                                <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                                    <button
+                                        onClick={() => setBulkStep('upload')}
+                                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                        Kembali
+                                    </button>
+                                    <button
+                                        onClick={handleBulkSubmit}
+                                        disabled={bulkSubmitting || bulkChanges.length === 0}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {bulkSubmitting ? 'Menyimpan...' : `Simpan Perubahan (${bulkChanges.length})`}
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

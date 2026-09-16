@@ -9,6 +9,7 @@ use App\Http\Controllers\UploadImageController;
 use App\Http\Controllers\AddNIKCandidateController;
 use App\Http\Controllers\PrintIdCardController;
 use App\Http\Controllers\BulkAddCandidateController;
+use App\Http\Controllers\BulkEditController;
 use App\Http\Controllers\ReprintIdCardController;
 use App\Http\Controllers\SettingsController\UserManagementController;
 use App\Http\Controllers\SettingsController\RoleManagementController;
@@ -80,6 +81,11 @@ Route::middleware('auth', 'verified')->group(function () {
     // Print ID Card Route
     Route::get('/candidates/print-id-card', [PrintIdCardController::class, 'view'])->middleware('permission:view print id cards')->name('candidates.printIdCard.view');
     Route::post('/candidates/print-id-card', [PrintIdCardController::class, 'store'])->middleware('permission:print id cards')->name('candidates.printIdCard.store');
+
+    // Bulk Edit Candidate Route
+    Route::get('/candidates/bulk-edit/template', [BulkEditController::class, 'downloadTemplate'])->middleware('permission:edit candidates')->name('candidates.bulkEdit.template');
+    Route::post('/candidates/bulk-edit/preview', [BulkEditController::class, 'preview'])->middleware('permission:edit candidates')->name('candidates.bulkEdit.preview');
+    Route::post('/candidates/bulk-edit', [BulkEditController::class, 'store'])->middleware('permission:edit candidates')->name('candidates.bulkEdit.store');
 
     // Bulk Add Candidate Route
     Route::get('/candidates/bulk-add', [BulkAddCandidateController::class, 'view'])->middleware('permission:bulk add candidates')->name('candidates.bulkAdd.view');
