@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Search, Printer, AlertCircle, CheckCircle, Download, Filter, Edit2, Trash2, Upload, FileSpreadsheet, X } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
+const BULK_ITEMS_PER_PAGE = 10;
 
 export default function PrintIdCard({ candidates, serviceStatus, currentFilter = 'unprinted' }) {
     const { flash, auth } = usePage().props;
@@ -21,6 +22,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
     const [bulkChanges, setBulkChanges] = useState([]);
     const [bulkNotFound, setBulkNotFound] = useState([]);
     const [bulkInvalidValues, setBulkInvalidValues] = useState([]);
+    const [bulkPage, setBulkPage] = useState(1);
     const [bulkLoading, setBulkLoading] = useState(false);
     const [bulkSubmitting, setBulkSubmitting] = useState(false);
     const [bulkError, setBulkError] = useState(null);
@@ -144,6 +146,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
         setBulkChanges([]);
         setBulkNotFound([]);
         setBulkInvalidValues([]);
+        setBulkPage(1);
         setBulkError(null);
     };
 
@@ -162,6 +165,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
             setBulkChanges(res.data.changes ?? []);
             setBulkNotFound(res.data.not_found ?? []);
             setBulkInvalidValues(res.data.invalid_values ?? []);
+            setBulkPage(1);
             setBulkStep('review');
         } catch (err) {
             setBulkError(err.response?.data?.error || 'Gagal memproses file.');
@@ -638,39 +642,90 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
 
                         {bulkStep === 'review' && (
                             <>
-                                <div className="max-h-96 overflow-y-auto space-y-4">
+                                <div className="space-y-4">
                                     {bulkChanges.length === 0 ? (
                                         <p className="text-sm text-gray-500 py-6 text-center">
                                             Tidak ada perubahan data yang terdeteksi.
                                         </p>
                                     ) : (
-                                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">NIK</th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Field</th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lama</th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Baru</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {bulkChanges.map((change, changeIdx) =>
-                                                    Object.entries(change.diff).map(([field, value], i) => (
-                                                        <tr
-                                                            key={`${change.candidate_id}-${field}`}
-                                                            className={changeIdx % 2 === 1 ? 'bg-gray-50/60' : undefined}
-                                                        >
-                                                            <td className="px-3 py-2 font-mono text-gray-700 align-top">
-                                                                {change.nik}
-                                                            </td>
-                                                            <td className="px-3 py-2 text-gray-500 capitalize">{field.replace('_', ' ')}</td>
-                                                            <td className="px-3 py-2 text-gray-500">{value.from || '-'}</td>
-                                                            <td className="px-3 py-2 text-green-700 font-medium">{value.to}</td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
+                                        <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+                                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                                <thead className="bg-gray-50 sticky top-0 z-10">
+                                                    <tr>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">NIK</th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Field</th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lama</th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Baru</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {bulkChanges
+                                                        .slice((bulkPage - 1) * BULK_ITEMS_PER_PAGE, bulkPage * BULK_ITEMS_PER_PAGE)
+                                                        .map((change, changeIdx) =>
+                                                            Object.entries(change.diff).map(([field, value], i) => (
+                                                                <tr
+                                                                    key={`${change.candidate_id}-${field}`}
+                                                                    className={changeIdx % 2 === 1 ? 'bg-gray-50/60' : undefined}
+                                                                >
+                                                                    <td className="px-3 py-2 font-mono text-gray-700 align-top">
+                                                                        {change.nik}
+                                                                    </td>
+                                                                    <td className="px-3 py-2 text-gray-500 capitalize">{field.replace('_', ' ')}</td>
+                                                                    <td className="px-3 py-2 text-gray-500">{value.from || '-'}</td>
+                                                                    <td className="px-3 py-2 text-green-700 font-medium">{value.to}</td>
+                                                                </tr>
+                                                            ))
+                                                        )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+
+                                    {bulkChanges.length > BULK_ITEMS_PER_PAGE && (
+                                        <div className="flex items-center justify-between text-xs text-gray-600">
+                                            <span>
+                                                Halaman {bulkPage} dari {Math.ceil(bulkChanges.length / BULK_ITEMS_PER_PAGE)} &mdash; {bulkChanges.length} kandidat
+                                            </span>
+                                            <div className="flex gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setBulkPage((p) => Math.max(1, p - 1))}
+                                                    disabled={bulkPage === 1}
+                                                    className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                >
+                                                    &laquo;
+                                                </button>
+                                                {Array.from(
+                                                    { length: Math.ceil(bulkChanges.length / BULK_ITEMS_PER_PAGE) },
+                                                    (_, i) => i + 1
+                                                ).map((page) => (
+                                                    <button
+                                                        type="button"
+                                                        key={page}
+                                                        onClick={() => setBulkPage(page)}
+                                                        className={`px-2.5 py-1 rounded border ${
+                                                            page === bulkPage
+                                                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                                                : 'border-gray-300 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        {page}
+                                                    </button>
+                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setBulkPage((p) =>
+                                                            Math.min(Math.ceil(bulkChanges.length / BULK_ITEMS_PER_PAGE), p + 1)
+                                                        )
+                                                    }
+                                                    disabled={bulkPage === Math.ceil(bulkChanges.length / BULK_ITEMS_PER_PAGE)}
+                                                    className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                >
+                                                    &raquo;
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
 
                                     {bulkNotFound.length > 0 && (
