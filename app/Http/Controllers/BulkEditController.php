@@ -129,6 +129,7 @@ class BulkEditController extends Controller
             'changes.*.name' => 'required|string|max:255',
             'changes.*.joblevel_id' => 'required|exists:joblevels,id',
             'changes.*.department_id' => 'required|exists:departments,id',
+            'changes.*.diff' => 'nullable|array',
         ]);
 
         $updated = 0;
@@ -140,11 +141,23 @@ class BulkEditController extends Controller
                     continue;
                 }
 
-                $candidate->update([
-                    'name' => $change['name'],
-                    'joblevel_id' => $change['joblevel_id'],
-                    'department_id' => $change['department_id'],
-                ]);
+                $diff = $change['diff'] ?? [];
+                $data = [];
+                if (array_key_exists('name', $diff)) {
+                    $data['name'] = $change['name'];
+                }
+                if (array_key_exists('job_level', $diff)) {
+                    $data['joblevel_id'] = $change['joblevel_id'];
+                }
+                if (array_key_exists('department', $diff)) {
+                    $data['department_id'] = $change['department_id'];
+                }
+
+                if (empty($data)) {
+                    continue;
+                }
+
+                $candidate->update($data);
 
                 ActivityLog::create([
                     'action' => 'bulk_update',
