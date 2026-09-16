@@ -16,6 +16,13 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [deleting, setDeleting] = useState(false);
     const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkStep, setBulkStep] = useState('upload'); // 'upload' | 'review'
+    const [bulkFile, setBulkFile] = useState(null);
+    const [bulkChanges, setBulkChanges] = useState([]);
+    const [bulkNotFound, setBulkNotFound] = useState([]);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkSubmitting, setBulkSubmitting] = useState(false);
+    const [bulkError, setBulkError] = useState(null);
 
     const handleFilterChange = (filter) => {
         router.get(
@@ -127,6 +134,52 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                 setDeleting(false);
             },
         });
+    };
+
+    const resetBulkModal = () => {
+        setShowBulkModal(false);
+        setBulkStep('upload');
+        setBulkFile(null);
+        setBulkChanges([]);
+        setBulkNotFound([]);
+        setBulkError(null);
+    };
+
+    const handleBulkPreview = async () => {
+        if (!bulkFile || bulkLoading) return;
+        setBulkLoading(true);
+        setBulkError(null);
+
+        const fd = new FormData();
+        fd.append('file', bulkFile);
+
+        try {
+            const res = await window.axios.post(route('candidates.bulkEdit.preview'), fd, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setBulkChanges(res.data.changes ?? []);
+            setBulkNotFound(res.data.not_found ?? []);
+            setBulkStep('review');
+        } catch (err) {
+            setBulkError(err.response?.data?.error || 'Gagal memproses file.');
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+    const handleBulkSubmit = () => {
+        if (bulkSubmitting || bulkChanges.length === 0) return;
+        setBulkSubmitting(true);
+        router.post(
+            route('candidates.bulkEdit.store'),
+            { changes: bulkChanges },
+            {
+                preserveScroll: true,
+                onSuccess: () => resetBulkModal(),
+                onError: () => setBulkError('Gagal menyimpan perubahan.'),
+                onFinish: () => setBulkSubmitting(false),
+            }
+        );
     };
 
     return (
@@ -495,7 +548,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
             {/* Bulk Update Modal */}
             {showBulkModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 relative">
+                    <div className={`bg-white rounded-xl shadow-xl w-full p-6 relative ${bulkStep === 'review' ? 'max-w-3xl' : 'max-w-lg'}`}>
                         <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-5">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-green-50 rounded-lg text-green-600">
@@ -506,64 +559,145 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                         Bulk Update Kandidat
                                     </h3>
                                     <p className="text-xs text-gray-500 mt-0.5">
-                                        Unggah berkas Excel untuk memperbarui data kandidat secara massal
+                                        {bulkStep === 'upload'
+                                            ? 'Unggah berkas Excel untuk memperbarui data kandidat secara massal'
+                                            : 'Periksa perubahan sebelum disimpan'}
                                     </p>
                                 </div>
                             </div>
                             <button
-                                onClick={() => setShowBulkModal(false)}
+                                onClick={resetBulkModal}
                                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                             >
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
 
-                        <div className="space-y-5">
-                            {/* Download Template Section */}
-                            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between gap-4">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-800">Template Excel</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        Unduh format template resmi untuk pengisian data kandidat.
-                                    </p>
+                        {bulkError && (
+                            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                {bulkError}
+                            </div>
+                        )}
+
+                        {bulkStep === 'upload' && (
+                            <>
+                                <div className="space-y-5">
+                                    {/* Download Template Section */}
+                                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-800">Template Excel</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                Unduh data kandidat siap-cetak saat ini untuk diedit.
+                                            </p>
+                                        </div>
+                                        <a
+                                            href={route('candidates.bulkEdit.template')}
+                                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 text-xs font-medium rounded-md shadow-sm transition-colors shrink-0"
+                                        >
+                                            <Download className="h-4 w-4 text-green-600" />
+                                            <span>Download Template</span>
+                                        </a>
+                                    </div>
+
+                                    {/* Excel File Input Section */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                            Upload File Excel
+                                        </label>
+                                        <input
+                                            type="file"
+                                            accept=".xlsx, .xls, .csv"
+                                            onChange={(e) => setBulkFile(e.target.files?.[0] ?? null)}
+                                            className="block w-full text-xs text-gray-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer border border-gray-300 rounded-lg p-1.5 focus:outline-none"
+                                        />
+                                    </div>
                                 </div>
-                                <a
-                                    href={route('candidates.template')}
-                                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 text-xs font-medium rounded-md shadow-sm transition-colors shrink-0"
-                                >
-                                    <Download className="h-4 w-4 text-green-600" />
-                                    <span>Download Template</span>
-                                </a>
-                            </div>
 
-                            {/* Excel File Input Section */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                    Upload File Excel
-                                </label>
-                                <input
-                                    type="file"
-                                    accept=".xlsx, .xls, .csv"
-                                    className="block w-full text-xs text-gray-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer border border-gray-300 rounded-lg p-1.5 focus:outline-none"
-                                />
-                            </div>
-                        </div>
+                                {/* Modal Footer Actions */}
+                                <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                                    <button
+                                        onClick={resetBulkModal}
+                                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        onClick={handleBulkPreview}
+                                        disabled={!bulkFile || bulkLoading}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {bulkLoading ? 'Memproses...' : 'Lihat Perubahan'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
 
-                        {/* Modal Footer Actions */}
-                        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-                            <button
-                                onClick={() => setShowBulkModal(false)}
-                                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                onClick={() => setShowBulkModal(false)}
-                                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
-                            >
-                                Upload / Simpan
-                            </button>
-                        </div>
+                        {bulkStep === 'review' && (
+                            <>
+                                <div className="max-h-96 overflow-y-auto space-y-4">
+                                    {bulkChanges.length === 0 ? (
+                                        <p className="text-sm text-gray-500 py-6 text-center">
+                                            Tidak ada perubahan data yang terdeteksi.
+                                        </p>
+                                    ) : (
+                                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">NIK</th>
+                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Field</th>
+                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lama</th>
+                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Baru</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {bulkChanges.map((change) =>
+                                                    Object.entries(change.diff).map(([field, value], i) => (
+                                                        <tr key={`${change.candidate_id}-${field}`}>
+                                                            {i === 0 && (
+                                                                <td
+                                                                    rowSpan={Object.keys(change.diff).length}
+                                                                    className="px-3 py-2 font-mono text-gray-700 align-top"
+                                                                >
+                                                                    {change.nik}
+                                                                </td>
+                                                            )}
+                                                            <td className="px-3 py-2 text-gray-500 capitalize">{field.replace('_', ' ')}</td>
+                                                            <td className="px-3 py-2 text-gray-500">{value.from || '-'}</td>
+                                                            <td className="px-3 py-2 text-green-700 font-medium">{value.to}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    )}
+
+                                    {bulkNotFound.length > 0 && (
+                                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
+                                            <p className="font-medium mb-1">NIK tidak ditemukan ({bulkNotFound.length}):</p>
+                                            <p>{bulkNotFound.map((n) => n.nik).join(', ')}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Modal Footer Actions */}
+                                <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                                    <button
+                                        onClick={() => setBulkStep('upload')}
+                                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                        Kembali
+                                    </button>
+                                    <button
+                                        onClick={handleBulkSubmit}
+                                        disabled={bulkSubmitting || bulkChanges.length === 0}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {bulkSubmitting ? 'Menyimpan...' : `Simpan Perubahan (${bulkChanges.length})`}
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
