@@ -3,12 +3,16 @@
 namespace App\Exports;
 
 use App\Models\Candidate;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class CandidateBulkEditExport implements FromCollection, WithHeadings, WithStyles
+class CandidateBulkEditExport extends DefaultValueBinder implements FromCollection, WithCustomValueBinder, WithHeadings, WithStyles
 {
     public function headings(): array
     {
@@ -38,5 +42,16 @@ class CandidateBulkEditExport implements FromCollection, WithHeadings, WithStyle
         return [
             1 => ['font' => ['bold' => true]],
         ];
+    }
+
+    public function bindValue(Cell $cell, $value): bool
+    {
+        if ($cell->getColumn() === 'A' && $cell->getRow() > 1) {
+            $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return parent::bindValue($cell, $value);
     }
 }
