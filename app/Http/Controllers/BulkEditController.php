@@ -45,11 +45,17 @@ class BulkEditController extends Controller
             return response()->json(['error' => 'Maksimal 500 baris per proses.'], 422);
         }
 
-        $joblevels = Joblevel::pluck('id', 'name');
-        $departments = Department::pluck('id', 'name');
+        // Key by a normalized (trimmed, lowercased) name so minor case/spacing
+        // differences in the uploaded file don't silently drop a field from the diff.
+        $normalize = fn (string $name): string => mb_strtolower(trim($name));
+        $joblevels = Joblevel::pluck('id', 'name')
+            ->mapWithKeys(fn ($id, $name) => [$normalize($name) => $id]);
+        $departments = Department::pluck('id', 'name')
+            ->mapWithKeys(fn ($id, $name) => [$normalize($name) => $id]);
 
         $changes = [];
         $notFound = [];
+        $invalidValues = [];
         $seenNiks = [];
 
         foreach ($rows as $index => $row) {
@@ -71,17 +77,24 @@ class BulkEditController extends Controller
                 continue;
             }
 
-            $joblevelId = $joblevels[$jobLevelName] ?? null;
-            $departmentId = $departments[$departmentName] ?? null;
+            $joblevelId = $jobLevelName !== '' ? ($joblevels[$normalize($jobLevelName)] ?? null) : null;
+            $departmentId = $departmentName !== '' ? ($departments[$normalize($departmentName)] ?? null) : null;
+
+            if ($jobLevelName !== '' && ! $joblevelId) {
+                $invalidValues[] = ['row' => $rowNum, 'nik' => $nik, 'field' => 'job_level', 'value' => $jobLevelName];
+            }
+            if ($departmentName !== '' && ! $departmentId) {
+                $invalidValues[] = ['row' => $rowNum, 'nik' => $nik, 'field' => 'department', 'value' => $departmentName];
+            }
 
             $diff = [];
             if ($name !== '' && $name !== $candidate->name) {
                 $diff['name'] = ['from' => $candidate->name, 'to' => $name];
             }
-            if ($jobLevelName !== '' && $joblevelId && $joblevelId !== $candidate->joblevel_id) {
+            if ($joblevelId && $joblevelId !== $candidate->joblevel_id) {
                 $diff['job_level'] = ['from' => $candidate->joblevel?->name, 'to' => $jobLevelName];
             }
-            if ($departmentName !== '' && $departmentId && $departmentId !== $candidate->department_id) {
+            if ($departmentId && $departmentId !== $candidate->department_id) {
                 $diff['department'] = ['from' => $candidate->department?->name, 'to' => $departmentName];
             }
 
@@ -103,6 +116,7 @@ class BulkEditController extends Controller
         return response()->json([
             'changes' => $changes,
             'not_found' => $notFound,
+            'invalid_values' => $invalidValues,
             'total_rows' => count($rows),
         ]);
     }

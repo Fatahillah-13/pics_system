@@ -20,6 +20,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
     const [bulkFile, setBulkFile] = useState(null);
     const [bulkChanges, setBulkChanges] = useState([]);
     const [bulkNotFound, setBulkNotFound] = useState([]);
+    const [bulkInvalidValues, setBulkInvalidValues] = useState([]);
     const [bulkLoading, setBulkLoading] = useState(false);
     const [bulkSubmitting, setBulkSubmitting] = useState(false);
     const [bulkError, setBulkError] = useState(null);
@@ -142,6 +143,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
         setBulkFile(null);
         setBulkChanges([]);
         setBulkNotFound([]);
+        setBulkInvalidValues([]);
         setBulkError(null);
     };
 
@@ -159,6 +161,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
             });
             setBulkChanges(res.data.changes ?? []);
             setBulkNotFound(res.data.not_found ?? []);
+            setBulkInvalidValues(res.data.invalid_values ?? []);
             setBulkStep('review');
         } catch (err) {
             setBulkError(err.response?.data?.error || 'Gagal memproses file.');
@@ -651,17 +654,15 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
-                                                {bulkChanges.map((change) =>
+                                                {bulkChanges.map((change, changeIdx) =>
                                                     Object.entries(change.diff).map(([field, value], i) => (
-                                                        <tr key={`${change.candidate_id}-${field}`}>
-                                                            {i === 0 && (
-                                                                <td
-                                                                    rowSpan={Object.keys(change.diff).length}
-                                                                    className="px-3 py-2 font-mono text-gray-700 align-top"
-                                                                >
-                                                                    {change.nik}
-                                                                </td>
-                                                            )}
+                                                        <tr
+                                                            key={`${change.candidate_id}-${field}`}
+                                                            className={changeIdx % 2 === 1 ? 'bg-gray-50/60' : undefined}
+                                                        >
+                                                            <td className="px-3 py-2 font-mono text-gray-700 align-top">
+                                                                {change.nik}
+                                                            </td>
                                                             <td className="px-3 py-2 text-gray-500 capitalize">{field.replace('_', ' ')}</td>
                                                             <td className="px-3 py-2 text-gray-500">{value.from || '-'}</td>
                                                             <td className="px-3 py-2 text-green-700 font-medium">{value.to}</td>
@@ -676,6 +677,21 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                         <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
                                             <p className="font-medium mb-1">NIK tidak ditemukan ({bulkNotFound.length}):</p>
                                             <p>{bulkNotFound.map((n) => n.nik).join(', ')}</p>
+                                        </div>
+                                    )}
+
+                                    {bulkInvalidValues.length > 0 && (
+                                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+                                            <p className="font-medium mb-1">
+                                                Nilai tidak dikenali, perubahan ini diabaikan ({bulkInvalidValues.length}):
+                                            </p>
+                                            <ul className="list-disc list-inside space-y-0.5">
+                                                {bulkInvalidValues.map((v, i) => (
+                                                    <li key={i}>
+                                                        Baris {v.row} (NIK {v.nik}): {v.field === 'job_level' ? 'Job Level' : 'Department'} &quot;{v.value}&quot; tidak ditemukan
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         </div>
                                     )}
                                 </div>
