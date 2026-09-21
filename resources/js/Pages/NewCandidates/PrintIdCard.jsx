@@ -42,6 +42,33 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
         );
     };
 
+    const getPageNumbers = (current, total) => {
+        const delta = 1;
+        const range = [];
+        const rangeWithDots = [];
+        let last;
+
+        for (let i = 1; i <= total; i++) {
+            if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+                range.push(i);
+            }
+        }
+
+        for (const i of range) {
+            if (last) {
+                if (i - last === 2) {
+                    rangeWithDots.push(last + 1);
+                } else if (i - last > 2) {
+                    rangeWithDots.push('...');
+                }
+            }
+            rangeWithDots.push(i);
+            last = i;
+        }
+
+        return rangeWithDots;
+    };
+
     const filteredCandidates = candidates.filter((c) =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.nik && c.nik.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -484,7 +511,26 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                     >
                                         &laquo;
                                     </button>
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                    {getPageNumbers(safePage, totalPages).map((page, idx) =>
+                                        page === '...' ? (
+                                            <span key={`dots-${idx}`} className="px-3 py-1 text-gray-400 select-none">
+                                                &hellip;
+                                            </span>
+                                        ) : (
+                                            <button
+                                                key={page}
+                                                onClick={() => setCurrentPage(page)}
+                                                className={`px-3 py-1 rounded border ${
+                                                    page === safePage
+                                                        ? 'bg-indigo-600 text-white border-indigo-600'
+                                                        : 'border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        )
+                                    )}
+                                    {/* {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                                         <button
                                             key={page}
                                             onClick={() => setCurrentPage(page)}
@@ -496,7 +542,7 @@ export default function PrintIdCard({ candidates, serviceStatus, currentFilter =
                                         >
                                             {page}
                                         </button>
-                                    ))}
+                                    ))} */}
                                     <button
                                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                                         disabled={safePage === totalPages}
